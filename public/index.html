@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cold Reach — Internship Outreach Automation</title>
+  <meta name="description" content="Automated cold email and LinkedIn outreach dashboard for internship applications at AI/ML and SDE startups.">
+  <link rel="stylesheet" href="/css/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚀</text></svg>">
+</head>
+<body>
+
+  <!-- Mobile Menu Toggle -->
+  <button class="mobile-menu-btn" id="mobileMenuBtn" onclick="toggleSidebar()">☰</button>
+
+  <div class="app-layout">
+    <!-- ═══ Sidebar ═══ -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <a href="#" class="sidebar-logo" onclick="navigate('dashboard')">
+          <div class="logo-icon">🚀</div>
+          <div class="logo-text">
+            <span class="brand">Cold Reach</span>
+            <span class="tagline">Outreach Automation</span>
+          </div>
+        </a>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-section-label">Overview</div>
+        <button class="nav-item active" data-page="dashboard" onclick="navigate('dashboard')">
+          <span class="icon">📊</span> Dashboard
+        </button>
+        <button class="nav-item" data-page="pipeline" onclick="navigate('pipeline')">
+          <span class="icon">🔄</span> Pipeline
+          <span class="badge" id="pipelineBadge">0</span>
+        </button>
+
+        <div class="nav-section-label">Outreach</div>
+        <button class="nav-item" data-page="leads" onclick="navigate('leads')">
+          <span class="icon">👥</span> Leads
+          <span class="badge" id="leadsBadge">0</span>
+        </button>
+        <button class="nav-item" data-page="compose" onclick="navigate('compose')">
+          <span class="icon">✉️</span> Compose
+        </button>
+        <button class="nav-item" data-page="activity" onclick="navigate('activity')">
+          <span class="icon">📋</span> Activity Log
+        </button>
+
+        <div class="nav-section-label">Analytics</div>
+        <button class="nav-item" data-page="analytics" onclick="navigate('analytics')">
+          <span class="icon">📈</span> Analytics
+        </button>
+
+        <div class="nav-section-label">System</div>
+        <button class="nav-item" data-page="settings" onclick="navigate('settings')">
+          <span class="icon">⚙️</span> Settings
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="dry-run-badge" id="dryRunBadge">
+          <span class="dot"></span>
+          <span>Dry Run Mode Active</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ═══ Main Content ═══ -->
+    <main class="main-content">
+
+      <!-- ── Dashboard Page ── -->
+      <section class="page-section active" id="page-dashboard">
+        <div class="page-header">
+          <h1>Dashboard</h1>
+          <p>Overview of your outreach campaign performance</p>
+        </div>
+
+        <!-- Stats Grid -->
+        <div class="stats-grid" id="statsGrid">
+          <div class="stat-card primary">
+            <div class="stat-icon">👥</div>
+            <div class="stat-value" id="statTotalLeads">0</div>
+            <div class="stat-label">Total Leads</div>
+          </div>
+          <div class="stat-card cyan">
+            <div class="stat-icon">📧</div>
+            <div class="stat-value" id="statTotalSent">0</div>
+            <div class="stat-label">Emails Sent</div>
+          </div>
+          <div class="stat-card success">
+            <div class="stat-icon">👀</div>
+            <div class="stat-value" id="statOpenRate">0%</div>
+            <div class="stat-label">Open Rate</div>
+          </div>
+          <div class="stat-card warning">
+            <div class="stat-icon">💬</div>
+            <div class="stat-value" id="statReplyRate">0%</div>
+            <div class="stat-label">Reply Rate</div>
+          </div>
+          <div class="stat-card pink">
+            <div class="stat-icon">🎯</div>
+            <div class="stat-value" id="statInterviews">0</div>
+            <div class="stat-label">Interviews</div>
+          </div>
+          <div class="stat-card danger">
+            <div class="stat-icon">🔄</div>
+            <div class="stat-value" id="statFollowUps">0</div>
+            <div class="stat-label">Pending Follow-ups</div>
+          </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="charts-grid-3">
+          <div class="glass-card">
+            <div class="card-header">
+              <span class="card-title">Outreach Funnel</span>
+            </div>
+            <div class="chart-container">
+              <canvas id="funnelChart"></canvas>
+            </div>
+          </div>
+          <div class="glass-card">
+            <div class="card-header">
+              <span class="card-title">By Domain</span>
+            </div>
+            <div class="chart-container">
+              <canvas id="domainChart"></canvas>
+            </div>
+          </div>
+          <div class="glass-card">
+            <div class="card-header">
+              <span class="card-title">By Region</span>
+            </div>
+            <div class="chart-container">
+              <canvas id="regionChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="glass-card">
+          <div class="card-header">
+            <span class="card-title">Recent Activity</span>
+            <button class="btn btn-ghost btn-sm" onclick="navigate('activity')">View All →</button>
+          </div>
+          <div class="activity-feed" id="dashboardActivityFeed">
+            <div class="empty-state">
+              <div class="icon">📭</div>
+              <h3>No activity yet</h3>
+              <p>Import leads and start your outreach campaign to see activity here.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Pipeline Page ── -->
+      <section class="page-section" id="page-pipeline">
+        <div class="page-header flex-between">
+          <div>
+            <h1>Pipeline</h1>
+            <p>Track leads through your outreach funnel</p>
+          </div>
+          <div class="flex gap-1">
+            <button class="btn btn-primary" onclick="openBatchSendModal()">⚡ Batch Send</button>
+          </div>
+        </div>
+
+        <div class="pipeline-grid" id="pipelineGrid">
+          <div class="pipeline-stage">
+            <div class="stage-name">🆕 New</div>
+            <div class="stage-count" id="pipelineNew">0</div>
+            <div class="stage-bar"><div class="fill" id="pipelineNewBar" style="width:0%"></div></div>
+          </div>
+          <div class="pipeline-stage">
+            <div class="stage-name">📨 Contacted</div>
+            <div class="stage-count" id="pipelineContacted">0</div>
+            <div class="stage-bar"><div class="fill" id="pipelineContactedBar" style="width:0%"></div></div>
+          </div>
+          <div class="pipeline-stage">
+            <div class="stage-name">👀 Opened</div>
+            <div class="stage-count" id="pipelineOpened">0</div>
+            <div class="stage-bar"><div class="fill" id="pipelineOpenedBar" style="width:0%"></div></div>
+          </div>
+          <div class="pipeline-stage">
+            <div class="stage-name">💬 Replied</div>
+            <div class="stage-count" id="pipelineReplied">0</div>
+            <div class="stage-bar"><div class="fill" id="pipelineRepliedBar" style="width:0%"></div></div>
+          </div>
+          <div class="pipeline-stage">
+            <div class="stage-name">🎯 Interview</div>
+            <div class="stage-count" id="pipelineInterview">0</div>
+            <div class="stage-bar"><div class="fill" id="pipelineInterviewBar" style="width:0%"></div></div>
+          </div>
+        </div>
+
+        <!-- Pipeline Activity -->
+        <div class="glass-card">
+          <div class="card-header">
+            <span class="card-title">All Outreach Records</span>
+          </div>
+          <div class="table-wrapper">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Company</th>
+                  <th>Contact</th>
+                  <th>Channel</th>
+                  <th>Status</th>
+                  <th>Sent</th>
+                  <th>Follow-ups</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="outreachTableBody">
+                <tr><td colspan="7" class="empty-state"><p>No outreach records yet</p></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Leads Page ── -->
+      <section class="page-section" id="page-leads">
+        <div class="page-header flex-between">
+          <div>
+            <h1>Leads</h1>
+            <p>Manage your startup contacts</p>
+          </div>
+          <div class="flex gap-1">
+            <button class="btn btn-ghost" onclick="clearLeads()" style="color: var(--danger-color);">🗑️ Clear Leads</button>
+            <button class="btn btn-ghost" onclick="enrichEmails()" id="enrichBtn">🔍 Find Emails</button>
+            <button class="btn btn-ghost" onclick="simulateEmails()" id="simulateBtn">✨ Simulate Emails</button>
+            <button class="btn btn-ghost" onclick="importSeedLeads()">📥 Import Seed</button>
+            <button class="btn btn-ghost" onclick="openScrapeModal()">🤖 Auto Scrape</button>
+            <button class="btn btn-primary" onclick="openAddLeadModal()">+ Add Lead</button>
+          </div>
+        </div>
+
+        <div class="filter-bar">
+          <div class="input-group">
+            <span class="icon">🔍</span>
+            <input type="text" id="leadSearch" placeholder="Search companies, people, emails..." oninput="filterLeads()">
+          </div>
+          <select id="filterDomain" onchange="filterLeads()">
+            <option value="">All Domains</option>
+            <option value="ai-ml">AI / ML</option>
+            <option value="sde">SDE</option>
+            <option value="both">Both</option>
+          </select>
+          <select id="filterRegion" onchange="filterLeads()">
+            <option value="">All Regions</option>
+            <option value="us">🇺🇸 US</option>
+            <option value="india">🇮🇳 India</option>
+          </select>
+          <select id="filterStatus" onchange="filterLeads()">
+            <option value="">All Status</option>
+            <option value="new">New</option>
+            <option value="contacted">Contacted</option>
+            <option value="opened">Opened</option>
+            <option value="replied">Replied</option>
+            <option value="interview">Interview</option>
+          </select>
+        </div>
+
+        <div class="glass-card">
+          <div class="table-wrapper">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Company</th>
+                  <th>Contact</th>
+                  <th>Role</th>
+                  <th>Email</th>
+                  <th>Size</th>
+                  <th>Domain</th>
+                  <th>Region</th>
+                  <th>Priority</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="leadsTableBody">
+                <tr><td colspan="10" class="empty-state">
+                  <div class="icon">👥</div>
+                  <h3>No leads yet</h3>
+                  <p>Import the seed CSV or add leads manually to get started.</p>
+                  <button class="btn btn-primary mt-2" onclick="importSeedLeads()">📥 Import Seed Leads</button>
+                </td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Compose Page ── -->
+      <section class="page-section" id="page-compose">
+        <div class="page-header">
+          <h1>Compose</h1>
+          <p>Send emails or generate LinkedIn messages for individual leads</p>
+        </div>
+
+        <div class="charts-grid">
+          <!-- Email Compose -->
+          <div class="glass-card">
+            <div class="card-header">
+              <span class="card-title">📧 Send Email</span>
+            </div>
+            <div class="form-group">
+              <label>Select Lead</label>
+              <select id="composeEmailLead">
+                <option value="">Choose a lead...</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Template</label>
+              <select id="composeEmailTemplate">
+                <option value="cold-email-founder">Founder Cold Email</option>
+                <option value="cold-email-recruiter">Recruiter Cold Email</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Custom Subject (optional)</label>
+              <input type="text" id="composeEmailSubject" placeholder="Leave blank for auto-generated subject">
+            </div>
+            <button class="btn btn-primary" onclick="sendComposeEmail()" id="sendEmailBtn">
+              📧 Send Email
+            </button>
+            <div id="composeEmailResult" class="mt-2"></div>
+          </div>
+
+          <!-- LinkedIn Compose -->
+          <div class="glass-card">
+            <div class="card-header">
+              <span class="card-title">💼 LinkedIn Message</span>
+            </div>
+            <div class="form-group">
+              <label>Select Lead</label>
+              <select id="composeLinkedinLead">
+                <option value="">Choose a lead...</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Template</label>
+              <select id="composeLinkedinTemplate">
+                <option value="connectionRequest">Connection Request</option>
+                <option value="introMessage">Introduction Message</option>
+                <option value="followUp">Follow-up</option>
+                <option value="recruiterMessage">Recruiter Outreach</option>
+              </select>
+            </div>
+            <button class="btn btn-ghost mb-2" onclick="generateLinkedInMsg()">
+              ✨ Generate Message
+            </button>
+            <div id="linkedinPreview" class="linkedin-preview hidden">
+              <div id="linkedinMsgContent"></div>
+              <div class="char-count" id="linkedinCharCount"></div>
+            </div>
+            <div class="flex gap-1 mt-1" id="linkedinActions" style="display:none">
+              <button class="btn btn-primary btn-sm" onclick="copyLinkedInMsg()">📋 Copy to Clipboard</button>
+              <button class="btn btn-success btn-sm" onclick="markLinkedInSent()">✅ Mark as Sent</button>
+              <a class="btn btn-ghost btn-sm" id="linkedinProfileLink" href="#" target="_blank">🔗 Open Profile</a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Activity Page ── -->
+      <section class="page-section" id="page-activity">
+        <div class="page-header">
+          <h1>Activity Log</h1>
+          <p>Complete history of all outreach actions</p>
+        </div>
+
+        <div class="filter-bar">
+          <select id="activityChannel" onchange="loadActivity()">
+            <option value="">All Channels</option>
+            <option value="email">📧 Email</option>
+            <option value="linkedin">💼 LinkedIn</option>
+          </select>
+          <select id="activityStatus" onchange="loadActivity()">
+            <option value="">All Status</option>
+            <option value="sent">Sent</option>
+            <option value="opened">Opened</option>
+            <option value="clicked">Clicked</option>
+            <option value="replied">Replied</option>
+            <option value="interview">Interview</option>
+            <option value="bounced">Bounced</option>
+            <option value="dry-run">Dry Run</option>
+          </select>
+        </div>
+
+        <div class="glass-card">
+          <div class="activity-feed" id="fullActivityFeed" style="max-height: none;">
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Analytics Page ── -->
+      <section class="page-section" id="page-analytics">
+        <div class="page-header">
+          <h1>Analytics</h1>
+          <p>Deep dive into your outreach performance metrics</p>
+        </div>
+
+        <div class="charts-grid mb-3">
+          <div class="glass-card">
+            <div class="card-header">
+              <span class="card-title">Emails Sent (Last 14 Days)</span>
+            </div>
+            <div class="chart-container">
+              <canvas id="dailySendsChart"></canvas>
+            </div>
+          </div>
+          <div class="glass-card">
+            <div class="card-header">
+              <span class="card-title">Outreach Funnel</span>
+            </div>
+            <div class="chart-container">
+              <canvas id="analyticsFunnelChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <div class="charts-grid">
+          <div class="glass-card">
+            <div class="card-header">
+              <span class="card-title">Domain Breakdown</span>
+            </div>
+            <div class="chart-container">
+              <canvas id="analyticsDomainChart"></canvas>
+            </div>
+          </div>
+          <div class="glass-card">
+            <div class="card-header">
+              <span class="card-title">Region Breakdown</span>
+            </div>
+            <div class="chart-container">
+              <canvas id="analyticsRegionChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Settings Page ── -->
+      <section class="page-section" id="page-settings">
+        <div class="page-header">
+          <h1>Settings</h1>
+          <p>Configure your outreach automation</p>
+        </div>
+
+        <div class="settings-grid">
+          <div class="glass-card">
+            <div class="card-header">
+              <span class="card-title">🔧 General</span>
+            </div>
+            <div class="setting-item">
+              <div class="setting-info">
+                <h4>Dry Run Mode</h4>
+                <p>When active, emails are logged but not actually sent</p>
+              </div>
+              <button class="toggle active" id="toggleDryRun" onclick="toggleSetting('dry_run_mode', this)"></button>
+            </div>
+            <div class="setting-item">
+              <div class="setting-info">
+                <h4>Auto Send</h4>
+                <p>Automatically send batch emails on schedule</p>
+              </div>
+              <button class="toggle" id="toggleAutoSend" onclick="toggleSetting('auto_send_enabled', this)"></button>
+            </div>
+            <div class="setting-item">
+              <div class="setting-info">
+                <h4>Follow-up Automation</h4>
+                <p>Automatically send follow-up emails</p>
+              </div>
+              <button class="toggle active" id="toggleFollowUp" onclick="toggleSetting('follow_up_enabled', this)"></button>
+            </div>
+          </div>
+
+          <div class="glass-card">
+            <div class="card-header">
+              <span class="card-title">📧 Email Status</span>
+            </div>
+            <div class="setting-item">
+              <div class="setting-info">
+                <h4>Emails Today</h4>
+                <p>Daily limit resets at midnight</p>
+              </div>
+              <span class="text-mono" id="settingsEmailCount" style="font-size:18px; font-weight:700; color: var(--accent-primary);">0 / 20</span>
+            </div>
+            <div class="setting-item">
+              <div class="setting-info">
+                <h4>Send Status</h4>
+                <p id="settingsSendStatus">Checking...</p>
+              </div>
+            </div>
+            <div class="mt-2">
+              <button class="btn btn-ghost btn-sm" onclick="testEmail()">🧪 Send Test Email</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ═══ Modals ═══ -->
+
+  <!-- Add Lead Modal -->
+  <div class="modal-overlay" id="addLeadModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Add New Lead</h2>
+        <button class="modal-close" onclick="closeModal('addLeadModal')">✕</button>
+      </div>
+      <div class="form-group">
+        <label>Company Name *</label>
+        <input type="text" id="newLeadCompany" placeholder="e.g., Acme AI">
+      </div>
+      <div class="form-group">
+        <label>Contact Name *</label>
+        <input type="text" id="newLeadPerson" placeholder="e.g., John Doe">
+      </div>
+      <div class="charts-grid" style="gap:12px">
+        <div class="form-group">
+          <label>Role</label>
+          <select id="newLeadRole">
+            <option value="founder">Founder</option>
+            <option value="recruiter">Recruiter</option>
+            <option value="hr">HR</option>
+            <option value="cto">CTO</option>
+            <option value="engineering_lead">Eng Lead</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Company Size</label>
+          <input type="number" id="newLeadSize" placeholder="e.g., 25">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="newLeadEmail" placeholder="john@acmeai.com">
+      </div>
+      <div class="form-group">
+        <label>LinkedIn URL</label>
+        <input type="url" id="newLeadLinkedin" placeholder="https://linkedin.com/in/johndoe">
+      </div>
+      <div class="form-group">
+        <label>Company Website</label>
+        <input type="url" id="newLeadWebsite" placeholder="https://acmeai.com">
+      </div>
+      <div class="charts-grid" style="gap:12px">
+        <div class="form-group">
+          <label>Domain</label>
+          <select id="newLeadDomain">
+            <option value="ai-ml">AI / ML</option>
+            <option value="sde">SDE</option>
+            <option value="both">Both</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Region</label>
+          <select id="newLeadRegion">
+            <option value="india">🇮🇳 India</option>
+            <option value="us">🇺🇸 US</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" onclick="closeModal('addLeadModal')">Cancel</button>
+        <button class="btn btn-primary" onclick="addNewLead()">Add Lead</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Batch Send Modal -->
+  <div class="modal-overlay" id="batchSendModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>⚡ Batch Send</h2>
+        <button class="modal-close" onclick="closeModal('batchSendModal')">✕</button>
+      </div>
+      <p style="color: var(--text-secondary); margin-bottom:20px;">
+        Send emails to the highest-priority leads that haven't been contacted yet. 
+        Emails are sent with appropriate delays between each.
+      </p>
+      <div class="form-group">
+        <label>Number of Emails</label>
+        <input type="number" id="batchCount" value="5" min="1" max="20" placeholder="5">
+      </div>
+      <div id="batchResult" class="mt-2"></div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" onclick="closeModal('batchSendModal')">Cancel</button>
+        <button class="btn btn-primary" onclick="sendBatch()" id="batchSendBtn">🚀 Send Batch</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Status Update Modal -->
+  <div class="modal-overlay" id="statusModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Update Status</h2>
+        <button class="modal-close" onclick="closeModal('statusModal')">✕</button>
+      </div>
+      <div class="form-group">
+        <label>New Status</label>
+        <select id="statusSelect">
+          <option value="sent">Sent</option>
+          <option value="opened">Opened</option>
+          <option value="clicked">Clicked</option>
+          <option value="replied">Replied</option>
+          <option value="interview">Interview</option>
+          <option value="bounced">Bounced</option>
+          <option value="no-response">No Response</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Notes (optional)</label>
+        <textarea id="statusNotes" placeholder="Add any notes..."></textarea>
+      </div>
+      <input type="hidden" id="statusOutreachId">
+      <div class="modal-actions">
+        <button class="btn btn-ghost" onclick="closeModal('statusModal')">Cancel</button>
+        <button class="btn btn-primary" onclick="submitStatusUpdate()">Update</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Auto Scrape Modal -->
+  <div class="modal-overlay" id="scrapeModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>🤖 Auto Scrape Leads</h2>
+        <button class="modal-close" onclick="closeModal('scrapeModal')">✕</button>
+      </div>
+      <p style="color: var(--text-secondary); margin-bottom:20px;">
+        Use Apify to automatically find LinkedIn profiles matching your target criteria.
+      </p>
+      <div class="form-group">
+        <label>Search Query</label>
+        <input type="text" id="scrapeQuery" placeholder="site:linkedin.com/in/ &quot;founder&quot; &quot;AI&quot;" value="site:linkedin.com/in/ &quot;founder&quot; OR &quot;recruiter&quot; &quot;AI&quot; OR &quot;Machine Learning&quot;">
+      </div>
+      <div class="form-group">
+        <label>Max Results</label>
+        <input type="number" id="scrapeMaxResults" value="10" min="1" max="50">
+      </div>
+      <div id="scrapeResult" class="mt-2"></div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" onclick="closeModal('scrapeModal')">Cancel</button>
+        <button class="btn btn-primary" onclick="startScrape()" id="scrapeBtn">🚀 Start Scraping</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script src="/js/api-client.js"></script>
+  <script src="/js/charts.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>
