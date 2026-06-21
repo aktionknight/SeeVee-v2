@@ -3,3 +3,4 @@ node_modules/
 database/*.db
 assets/resume.pdf
 *.log
+legacy/
