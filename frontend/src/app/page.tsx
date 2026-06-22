@@ -17,10 +17,10 @@ export default function Home() {
           Get Started
         </Link>
         <Link 
-          href="/dashboard" 
+          href="/signup" 
           className="inline-flex h-10 items-center justify-center rounded-md border border-input bg-background px-8 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"
         >
-          View Dashboard
+          Create Account
         </Link>
       </div>
     </div>
