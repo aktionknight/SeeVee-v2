@@ -33,6 +33,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Check for existing session on mount
   useEffect(() => {
+    // Skip auto-check on the callback page — the callback page handles its own auth flow
+    if (pathname === '/auth/callback') {
+      setIsLoading(false);
+      return;
+    }
+
     const token = localStorage.getItem('access_token');
     if (token) {
       api.getMe()
