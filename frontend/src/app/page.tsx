@@ -14,13 +14,7 @@ export default function Home() {
           href="/login" 
           className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-8 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90"
         >
-          Get Started
-        </Link>
-        <Link 
-          href="/signup" 
-          className="inline-flex h-10 items-center justify-center rounded-md border border-input bg-background px-8 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"
-        >
-          Create Account
+          Get Started with Google
         </Link>
       </div>
     </div>

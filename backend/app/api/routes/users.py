@@ -5,17 +5,9 @@ from typing import List
 
 from app.core.database import get_db
 from app.models.user import User
-from app.schemas.user import UserCreate, UserUpdate, UserResponse
+from app.schemas.user import UserUpdate, UserResponse
 
 router = APIRouter(prefix="/users", tags=["Users"])
-
-@router.post("/", response_model=UserResponse)
-async def create_user(user: UserCreate, db: AsyncSession = Depends(get_db)):
-    db_user = User(**user.model_dump())
-    db.add(db_user)
-    await db.commit()
-    await db.refresh(db_user)
-    return db_user
 
 @router.get("/", response_model=List[UserResponse])
 async def read_users(skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_db)):

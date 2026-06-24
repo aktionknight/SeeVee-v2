@@ -1,23 +1,18 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import Link from "next/link";
+import { useEffect, useState } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { GoogleSignInButton } from '@/components/GoogleSignInButton';
-import { Loader2, AlertCircle } from 'lucide-react';
+import { AlertCircle, Shield, Mail, FileText } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { user, isLoading } = useAuth();
   const searchParams = useSearchParams();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const router = useRouter();
   const [error, setError] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Pick up error from Google OAuth redirect
   useEffect(() => {
@@ -27,102 +22,55 @@ export default function LoginPage() {
     }
   }, [searchParams]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-
-    // Client-side validation
-    if (!email.trim()) {
-      setError('Please enter your email address');
-      return;
+  // If already logged in, redirect to dashboard
+  useEffect(() => {
+    if (!isLoading && user) {
+      router.push('/dashboard');
     }
-    if (!password) {
-      setError('Please enter your password');
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      await login(email, password);
-    } catch (err: any) {
-      setError(err.message || 'Login failed. Please try again.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+  }, [user, isLoading, router]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
       <Card className="w-full max-w-md">
-        <form onSubmit={handleSubmit}>
-          <CardHeader className="space-y-1 text-center">
-            <CardTitle className="text-2xl">Welcome back</CardTitle>
-            <CardDescription>
-              Enter your email and password to login to SeeVee
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {error && (
-              <div className="flex items-center gap-2 rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-                <AlertCircle className="h-4 w-4 shrink-0" />
-                <span>{error}</span>
-              </div>
-            )}
-
-            {/* Google OAuth */}
-            <GoogleSignInButton label="Sign in with Google" />
-
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-card px-2 text-muted-foreground">
-                  Or continue with email
-                </span>
-              </div>
+        <CardHeader className="space-y-1 text-center">
+          <CardTitle className="text-2xl">Welcome to SeeVee</CardTitle>
+          <CardDescription>
+            Sign in with your Google account to get started
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {error && (
+            <div className="flex items-center gap-2 rounded-md bg-destructive/15 p-3 text-sm text-destructive">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span>{error}</span>
             </div>
+          )}
 
+          <GoogleSignInButton label="Continue with Google" />
+
+          <div className="space-y-3 rounded-lg border border-border/50 bg-muted/30 p-4">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              By signing in, you&apos;ll be granting access to:
+            </p>
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="m@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                disabled={isSubmitting}
-                autoComplete="email"
-              />
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Mail className="h-4 w-4 text-blue-400" />
+                <span>Read your emails</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Shield className="h-4 w-4 text-green-400" />
+                <span>Send emails on your behalf</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <FileText className="h-4 w-4 text-amber-400" />
+                <span>Manage email drafts</span>
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                disabled={isSubmitting}
-                autoComplete="current-password"
-              />
-            </div>
-          </CardContent>
-          <CardFooter className="flex flex-col space-y-4">
-            <Button type="submit" className="w-full" disabled={isSubmitting}>
-              {isSubmitting ? (
-                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Signing in...</>
-              ) : (
-                'Sign In'
-              )}
-            </Button>
-            <div className="text-center text-sm">
-              Don&apos;t have an account?{" "}
-              <Link href="/signup" className="underline hover:text-primary">
-                Sign up
-              </Link>
-            </div>
-          </CardFooter>
-        </form>
+            <p className="text-xs text-muted-foreground/70 pt-1">
+              Your credentials are encrypted and never shared with third parties.
+            </p>
+          </div>
+        </CardContent>
       </Card>
     </div>
   );

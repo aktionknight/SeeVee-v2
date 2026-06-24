@@ -5,37 +5,33 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import { Loader2 } from 'lucide-react';
 
+/**
+ * OAuth callback page.
+ * 
+ * The backend sets an HttpOnly cookie with the JWT before redirecting here.
+ * This page simply verifies the cookie works by calling /auth/me,
+ * then redirects to the dashboard.
+ */
 export default function AuthCallbackPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [error, setError] = useState('');
 
   useEffect(() => {
-    const token = searchParams.get('token');
     const errorParam = searchParams.get('error');
 
     if (errorParam) {
-      // Redirect to login with error message
       router.push(`/login?error=${encodeURIComponent(errorParam)}`);
       return;
     }
 
-    if (!token) {
-      router.push('/login?error=No authentication token received');
-      return;
-    }
-
-    // Store the token and fetch user data
-    localStorage.setItem('access_token', token);
-
+    // Cookie was set by the backend redirect — verify it works
     api.getMe()
-      .then((user) => {
-        localStorage.setItem('user', JSON.stringify(user));
-        // Force a full page navigation so AuthContext picks up the new token
+      .then(() => {
+        // Force full page navigation so AuthContext picks up the session
         window.location.href = '/dashboard';
       })
       .catch(() => {
-        localStorage.removeItem('access_token');
         setError('Failed to verify authentication. Please try again.');
         setTimeout(() => router.push('/login'), 2000);
       });

@@ -18,6 +18,9 @@ class Settings(BaseSettings):
     GOOGLE_REDIRECT_URI: str
     GOOGLE_API_KEY: str
 
+    # Encryption (Fernet key for encrypting stored API keys)
+    ENCRYPTION_KEY: str
+
     class Config:
         env_file = "../.env"
 

@@ -1,16 +1,19 @@
 from urllib.parse import urlencode
+import logging
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 import httpx
 
 from app.core.config import settings
 from app.core.database import get_db
-from app.core.security import hash_password, verify_password, create_access_token, get_current_user
+from app.core.security import create_access_token, get_current_user, AUTH_COOKIE_NAME, AUTH_COOKIE_MAX_AGE
 from app.models.user import User
-from app.schemas.user import UserCreate, LoginRequest, TokenResponse, UserResponse
+from app.schemas.user import UserResponse
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -21,89 +24,19 @@ GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v2/userinfo"
 
-
-# ---------------------------------------------------------------------------
-# Email / Password auth
-# ---------------------------------------------------------------------------
-
-@router.post("/signup", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
-async def signup(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
-    # Check if user already exists
-    result = await db.execute(select(User).filter(User.email == user_data.email))
-    existing_user = result.scalars().first()
-    if existing_user:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="An account with this email already exists",
-        )
-
-    # Create user
-    new_user = User(
-        email=user_data.email,
-        name=user_data.name,
-        hashed_password=hash_password(user_data.password),
-        auth_provider="local",
-    )
-    db.add(new_user)
-    await db.commit()
-    await db.refresh(new_user)
-
-    # Generate token
-    access_token = create_access_token(data={"sub": new_user.id})
-
-    return TokenResponse(
-        access_token=access_token,
-        user=UserResponse.model_validate(new_user),
-    )
-
-
-@router.post("/login", response_model=TokenResponse)
-async def login(login_data: LoginRequest, db: AsyncSession = Depends(get_db)):
-    # Find user
-    result = await db.execute(select(User).filter(User.email == login_data.email))
-    user = result.scalars().first()
-
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password",
-        )
-
-    # If user signed up with Google and has no password
-    if user.auth_provider == "google" and not user.hashed_password:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="This account uses Google sign-in. Please use 'Continue with Google' instead.",
-        )
-
-    if not verify_password(login_data.password, user.hashed_password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password",
-        )
-
-    if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Account is deactivated",
-        )
-
-    # Generate token
-    access_token = create_access_token(data={"sub": user.id})
-
-    return TokenResponse(
-        access_token=access_token,
-        user=UserResponse.model_validate(user),
-    )
-
-
-@router.get("/me", response_model=UserResponse)
-async def get_me(current_user: User = Depends(get_current_user)):
-    return current_user
+# Gmail scopes: read emails, send emails, manage drafts
+GOOGLE_SCOPES = " ".join([
+    "openid",
+    "email",
+    "profile",
+    "https://www.googleapis.com/auth/gmail.readonly",   # Read emails
+    "https://www.googleapis.com/auth/gmail.send",        # Send emails
+    "https://www.googleapis.com/auth/gmail.compose",     # Manage drafts
+])
 
 
 # ---------------------------------------------------------------------------
-# Google OAuth
+# Google OAuth — the ONLY login method
 # ---------------------------------------------------------------------------
 
 @router.get("/google/login")
@@ -119,9 +52,9 @@ async def google_login():
         "client_id": settings.GOOGLE_CLIENT_ID,
         "redirect_uri": settings.GOOGLE_REDIRECT_URI,
         "response_type": "code",
-        "scope": "openid email profile",
-        "access_type": "offline",
-        "prompt": "consent",
+        "scope": GOOGLE_SCOPES,
+        "access_type": "offline",   # Required to get refresh_token
+        "prompt": "consent",        # Force consent to always get refresh_token
     }
     url = f"{GOOGLE_AUTH_URL}?{urlencode(params)}"
     return RedirectResponse(url=url)
@@ -129,7 +62,15 @@ async def google_login():
 
 @router.get("/google/callback")
 async def google_callback(code: str = None, error: str = None, db: AsyncSession = Depends(get_db)):
-    """Handle Google OAuth callback — exchange code for tokens, find/create user."""
+    """
+    Handle Google OAuth callback.
+    
+    1. Exchange authorization code for tokens (including refresh_token)
+    2. Fetch user profile from Google
+    3. Find or create user in database
+    4. Store encrypted refresh token for Gmail API access
+    5. Set JWT as HttpOnly cookie and redirect to frontend
+    """
     # Handle denied access
     if error:
         return RedirectResponse(
@@ -163,6 +104,7 @@ async def google_callback(code: str = None, error: str = None, db: AsyncSession 
 
         token_data = token_response.json()
         google_access_token = token_data.get("access_token")
+        google_refresh_token = token_data.get("refresh_token")
 
         if not google_access_token:
             return RedirectResponse(
@@ -193,23 +135,20 @@ async def google_callback(code: str = None, error: str = None, db: AsyncSession 
             )
 
         # 3. Find or create user
-        # First, check by google_id
         result = await db.execute(select(User).filter(User.google_id == google_id))
         user = result.scalars().first()
 
         if not user:
-            # Check by email (user may have signed up with email/password first)
+            # Check by email (existing user from before)
             result = await db.execute(select(User).filter(User.email == email))
             user = result.scalars().first()
 
             if user:
                 # Link Google account to existing user
                 user.google_id = google_id
-                user.auth_provider = "google" if not user.hashed_password else user.auth_provider
+                user.auth_provider = "google"
                 if avatar_url:
                     user.avatar_url = avatar_url
-                await db.commit()
-                await db.refresh(user)
             else:
                 # Create new user
                 user = User(
@@ -221,26 +160,83 @@ async def google_callback(code: str = None, error: str = None, db: AsyncSession 
                     hashed_password=None,
                 )
                 db.add(user)
-                await db.commit()
-                await db.refresh(user)
+
+        # 4. Store encrypted refresh token for Gmail API access
+        if google_refresh_token:
+            # Import encryption lazily to avoid circular imports at module level
+            from app.core.encryption import encrypt_value
+            user.encrypted_google_refresh_token = encrypt_value(google_refresh_token)
+            user.gmail_connected = True
+
+        # Update avatar if changed
+        if avatar_url and user.avatar_url != avatar_url:
+            user.avatar_url = avatar_url
+
+        await db.commit()
+        await db.refresh(user)
 
         if not user.is_active:
             return RedirectResponse(
                 url=f"{settings.FRONTEND_URL}/login?error=Account is deactivated"
             )
 
-        # 4. Generate JWT and redirect to frontend
+        # 5. Generate JWT and set as HttpOnly cookie
         access_token = create_access_token(data={"sub": user.id})
 
-        return RedirectResponse(
-            url=f"{settings.FRONTEND_URL}/auth/callback?token={access_token}"
+        redirect = RedirectResponse(
+            url=f"{settings.FRONTEND_URL}/auth/callback",
+            status_code=status.HTTP_302_FOUND,
         )
+        redirect.set_cookie(
+            key=AUTH_COOKIE_NAME,
+            value=access_token,
+            max_age=AUTH_COOKIE_MAX_AGE,
+            httponly=True,
+            secure=False,       # Set to True in production with HTTPS
+            samesite="lax",
+            path="/",
+        )
+        return redirect
 
-    except httpx.HTTPError:
+    except httpx.HTTPError as e:
+        logger.error(f"HTTP error during Google authentication: {e}", exc_info=True)
         return RedirectResponse(
             url=f"{settings.FRONTEND_URL}/login?error=Network error during Google sign-in"
         )
-    except Exception:
+    except Exception as e:
+        logger.error(f"Unexpected error during Google callback: {e}", exc_info=True)
         return RedirectResponse(
             url=f"{settings.FRONTEND_URL}/login?error=An unexpected error occurred"
         )
+
+
+# ---------------------------------------------------------------------------
+# Session management
+# ---------------------------------------------------------------------------
+
+@router.get("/me", response_model=UserResponse)
+async def get_me(current_user: User = Depends(get_current_user)):
+    """Get the currently authenticated user's profile."""
+    return current_user
+
+
+@router.post("/logout")
+async def logout():
+    """Clear the auth cookie to log the user out."""
+    response = JSONResponse(content={"ok": True})
+    response.delete_cookie(
+        key=AUTH_COOKIE_NAME,
+        path="/",
+        httponly=True,
+        samesite="lax",
+    )
+    return response
+
+
+@router.get("/gmail/status")
+async def gmail_status(current_user: User = Depends(get_current_user)):
+    """Check if the current user has Gmail connected."""
+    return {
+        "gmail_connected": current_user.gmail_connected,
+        "email": current_user.email,
+    }
