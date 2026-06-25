@@ -8,6 +8,7 @@ class JobBase(BaseModel):
     company: str
     description: Optional[str] = None
     url: Optional[str] = None
+    status: Optional[str] = "pending"
 
 class JobCreate(JobBase):
     pass
@@ -17,6 +18,7 @@ class JobUpdate(BaseModel):
     company: Optional[str] = None
     description: Optional[str] = None
     url: Optional[str] = None
+    status: Optional[str] = None
 
 class JobResponse(JobBase):
     id: int

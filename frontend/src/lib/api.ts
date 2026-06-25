@@ -148,6 +148,61 @@ class ApiClient {
   async getEmailRecord(emailId: number) {
     return this.request<any>(`/api/v1/emails/${emailId}`);
   }
+  // -----------------------------------------------------------------------
+  // Leads
+  // -----------------------------------------------------------------------
+
+  async listLeads() {
+    return this.request<any[]>('/api/v1/leads');
+  }
+
+  async deleteLead(id: number) {
+    return this.request<{ ok: boolean }>(`/api/v1/leads/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async updateLeadEmail(id: number, email: string) {
+    return this.request<any>(`/api/v1/leads/${id}/email`, {
+      method: 'PUT',
+      body: JSON.stringify({ email }),
+    });
+  }
+
+  async scrapeLeads(data: { query: string; max_results?: number }) {
+    return this.request<{ ok: boolean; message: string; job_id: number }>('/api/v1/leads/scrape', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  // -----------------------------------------------------------------------
+  // Jobs
+  // -----------------------------------------------------------------------
+
+  async getJob(id: number) {
+    return this.request<any>(`/api/v1/jobs/${id}`);
+  }
+
+  // -----------------------------------------------------------------------
+  // Intelligence
+  // -----------------------------------------------------------------------
+
+  async generateIntelligence(data: { lead_id: number; user_profile: any; company_data: any; founder_data: any; product_data: any }) {
+    return this.request<any>('/api/v1/intelligence/generate', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getInsights(leadId: number) {
+    return this.request<any>(`/api/v1/intelligence/leads/${leadId}/insights`);
+  }
+
+  async getGeneratedContent(leadId: number) {
+    return this.request<any>(`/api/v1/intelligence/leads/${leadId}/content`);
+  }
 }
 
 export const api = new ApiClient(API_BASE_URL);
+
