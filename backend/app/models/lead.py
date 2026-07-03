@@ -16,6 +16,8 @@ class Lead(Base):
     region = Column(String, nullable=True)
     source = Column(String, default="apify_scrape")
     status = Column(String, default="new")
+    is_qualified = Column(Boolean, default=True)
+    disqualification_reason = Column(String, nullable=True)
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

@@ -19,14 +19,20 @@ class ApiClient {
 
   async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
-    const response = await fetch(url, {
-      ...options,
-      credentials: 'include', // Always send cookies
-      headers: {
-        ...this.getHeaders(),
-        ...options.headers,
-      },
-    });
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        ...options,
+        credentials: 'include', // Always send cookies
+        headers: {
+          ...this.getHeaders(),
+          ...options.headers,
+        },
+      });
+    } catch (error) {
+      console.error('Network request failed:', error);
+      throw new Error(`Network error: Could not connect to ${url}. Please ensure the backend is running.`);
+    }
 
     if (!response.ok) {
       let errorMessage = 'An unexpected error occurred';
@@ -188,7 +194,7 @@ class ApiClient {
   // Intelligence
   // -----------------------------------------------------------------------
 
-  async generateIntelligence(data: { lead_id: number; user_profile: any; company_data: any; founder_data: any; product_data: any }) {
+  async generateIntelligence(data: { lead_id: number; user_profile: any; company_data: any; founder_data: any; product_data: any; query?: string }) {
     return this.request<any>('/api/v1/intelligence/generate', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -201,6 +207,24 @@ class ApiClient {
 
   async getGeneratedContent(leadId: number) {
     return this.request<any>(`/api/v1/intelligence/leads/${leadId}/content`);
+  }
+
+  // -----------------------------------------------------------------------
+  // Resume Review
+  // -----------------------------------------------------------------------
+
+  async reviewResumeText(data: { resume_text: string; job_description?: string; use_career_context?: boolean; top_k?: number }) {
+    return this.request<any>('/api/v1/resumes/review-text', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async reviewResumeById(resumeId: number, data: { job_description?: string; use_career_context?: boolean; top_k?: number }) {
+    return this.request<any>(`/api/v1/resumes/${resumeId}/review`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
   }
 }
 

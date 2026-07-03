@@ -111,3 +111,92 @@ The application requests the following Gmail API scopes during Google OAuth:
 1. **Principle of Least Privilege**: These scopes are intentionally limited. We do NOT request `https://mail.google.com/` (full Gmail access) or `gmail.modify` (label/delete operations).
 2. **User Consent**: Google's consent screen will explicitly list what the app can do, and users can revoke access at any time from their Google account settings.
 3. **Production**: The Google OAuth app must be verified by Google before requesting sensitive scopes for non-test users.
+
+---
+
+## 7. Missing Authentication on Resume Endpoints (IDOR)
+
+**Date Logged**: 2026-07-04
+**Severity**: Critical
+**Location**: `backend/app/api/routes/resumes.py`
+
+### Description
+All resume CRUD endpoints (POST, GET, PUT, DELETE) had no `get_current_user` authentication dependency. Additionally, no `user_id` filtering was applied to queries, meaning any unauthenticated user could create, read, update, or delete any user's resumes.
+
+### Vulnerability Vectors
+1. **Unauthenticated Access**: All endpoints were publicly accessible without any login.
+2. **Insecure Direct Object Reference (IDOR)**: No user_id scoping — any user could access/modify other users' resumes by guessing IDs.
+3. **User ID Spoofing**: The `user_id` field was accepted from the client request body, allowing impersonation.
+
+### Recommended Mitigation
+- Add `current_user: User = Depends(get_current_user)` to all endpoints.
+- Filter all queries by `Resume.user_id == current_user.id`.
+- Auto-set `user_id` from the authenticated user on create; remove from client schema.
+
+### Status: ✅ RESOLVED (2026-07-04)
+Authentication and user_id filtering added to all resume endpoints. `user_id` removed from `ResumeCreate` schema.
+
+---
+
+## 8. Missing Authentication on Campaign Endpoints (IDOR)
+
+**Date Logged**: 2026-07-04
+**Severity**: Critical
+**Location**: `backend/app/api/routes/campaigns.py`
+
+### Description
+Identical to Bug 7 — all campaign CRUD endpoints lacked authentication and user_id filtering.
+
+### Vulnerability Vectors
+1. **Unauthenticated Access**: All endpoints publicly accessible.
+2. **IDOR**: No user scoping on queries.
+3. **User ID Spoofing**: `user_id` accepted from client body.
+
+### Recommended Mitigation
+Same as Bug 7.
+
+### Status: ✅ RESOLVED (2026-07-04)
+Authentication and user_id filtering added to all campaign endpoints. `user_id` removed from `CampaignCreate` schema.
+
+---
+
+## 9. Missing Authentication on RAG Endpoints
+
+**Date Logged**: 2026-07-04
+**Severity**: High
+**Location**: `backend/app/api/routes/rag.py`
+
+### Description
+The `/rag/ingest`, `/rag/retrieve`, and `/rag/tailor` endpoints had no authentication. Anyone could ingest data into the vector DB, retrieve career context, or trigger the LangGraph workflow without being logged in.
+
+### Vulnerability Vectors
+1. **Unauthenticated Data Ingestion**: Attackers could poison the vector DB with malicious data.
+2. **Information Disclosure**: Career context could be retrieved by anyone.
+3. **Resource Abuse**: The LangGraph workflow (which calls Gemini API) could be triggered unlimited times, running up API costs.
+
+### Recommended Mitigation
+Add `current_user: User = Depends(get_current_user)` to all RAG endpoints.
+
+### Status: ✅ RESOLVED (2026-07-04)
+Authentication added to all three RAG endpoints.
+
+---
+
+## 10. API Key Misconfiguration in RAG Ingestion Service
+
+**Date Logged**: 2026-07-04
+**Severity**: High
+**Location**: `backend/app/services/rag_ingestion.py`, line 27
+
+### Description
+The `get_embedding()` function used `os.environ.get("GEMINI_API_KEY")` to configure the Gemini client, while the rest of the application uses `settings.GOOGLE_API_KEY` from the centralized config. The env var name mismatch (`GEMINI_API_KEY` vs `GOOGLE_API_KEY`) meant the embedding client always received `None` as the API key, causing all embedding generation to silently fail.
+
+### Vulnerability Vectors
+1. **Silent Failure**: Embeddings silently return empty lists, causing all RAG ingestion and retrieval to fail without clear errors.
+2. **Configuration Drift**: Inconsistent env var names make it easy to miss required variables during deployment.
+
+### Recommended Mitigation
+Use `from app.core.config import settings` and `settings.GOOGLE_API_KEY` consistently.
+
+### Status: ✅ RESOLVED (2026-07-04)
+Changed to use `settings.GOOGLE_API_KEY` from the centralized config.

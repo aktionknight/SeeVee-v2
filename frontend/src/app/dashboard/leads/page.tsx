@@ -117,14 +117,18 @@ export default function LeadsPage() {
   const handleGenerate = async (lead: Lead) => {
     setGeneratingFor(lead.id);
     try {
-      await api.generateIntelligence({
+      const res = await api.generateIntelligence({
         lead_id: lead.id,
         user_profile: { name: "User", company: "SeeVee", product: "AI Sales Engine" },
         company_data: { name: lead.company_name },
         founder_data: { name: lead.person_name, role: lead.person_role },
         product_data: { description: "Outbound AI outreach generator" }
       });
-      alert("Intelligence generation complete! Insights have been securely saved to your database.");
+      if (res?.data?.status === "unqualified") {
+        alert(`Lead Unqualified: ${res.data.reason}`);
+      } else {
+        alert("Intelligence generation complete! Insights have been securely saved to your database.");
+      }
     } catch (err) {
       console.error("Generate failed", err);
       alert("Failed to generate intelligence.");

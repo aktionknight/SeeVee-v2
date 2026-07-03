@@ -3,7 +3,6 @@ from typing import Optional
 from datetime import datetime
 
 class ResumeBase(BaseModel):
-    user_id: int
     name: str
     content: str
     file_url: Optional[str] = None
@@ -18,6 +17,7 @@ class ResumeUpdate(BaseModel):
 
 class ResumeResponse(ResumeBase):
     id: int
+    user_id: int
     created_at: datetime
     updated_at: Optional[datetime]
 

@@ -13,3 +13,8 @@ aiosqlite>=0.19.0
 httpx>=0.25.0
 cryptography>=41.0.0
 google-genai>=0.2.0
+chromadb>=0.4.0
+langgraph
+langchain_google_genai
+apify-client>=1.0.0
+

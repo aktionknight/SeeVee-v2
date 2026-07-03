@@ -12,7 +12,9 @@ import { Loader2 } from 'lucide-react';
  * This page simply verifies the cookie works by calling /auth/me,
  * then redirects to the dashboard.
  */
-export default function AuthCallbackPage() {
+import { Suspense } from 'react';
+
+function AuthCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [error, setError] = useState('');
@@ -50,5 +52,13 @@ export default function AuthCallbackPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function AuthCallbackPage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">Loading...</div>}>
+      <AuthCallbackContent />
+    </Suspense>
   );
 }

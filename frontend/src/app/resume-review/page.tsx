@@ -3,64 +3,91 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { Upload, FileText, CheckCircle2, Sparkles } from "lucide-react"
+import { CheckCircle2, Sparkles, FileText, Briefcase, AlertCircle } from "lucide-react"
+import { api } from "@/lib/api"
 
 export default function ResumeReviewPage() {
-  const [file, setFile] = useState<File | null>(null)
+  const [resumeText, setResumeText] = useState("")
+  const [jobDescription, setJobDescription] = useState("")
   const [isReviewing, setIsReviewing] = useState(false)
   const [reviewResult, setReviewResult] = useState<string | null>(null)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0])
-      setReviewResult(null)
+  const handleReview = async () => {
+    if (!resumeText.trim()) {
+      setErrorMsg("Please paste your resume text to get a review.")
+      return
     }
-  }
-
-  const handleReview = () => {
-    if (!file) return
+    
     setIsReviewing(true)
-    // Simulate API call
-    setTimeout(() => {
+    setReviewResult(null)
+    setErrorMsg(null)
+    
+    try {
+      const response = await api.reviewResumeText({
+        resume_text: resumeText,
+        job_description: jobDescription,
+      })
+      
+      setReviewResult(response.review)
+    } catch (error: any) {
+      setErrorMsg(error.message || "Failed to generate review. Please try again.")
+    } finally {
       setIsReviewing(false)
-      setReviewResult("Your resume looks great! However, you could improve the action verbs in your recent experience section. Let me generate a tailored version for your next application.")
-    }, 2000)
+    }
   }
 
   return (
     <div className="flex min-h-screen flex-col p-8 md:p-24 space-y-8">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Tailored Resume & Email Review</h1>
-        <p className="text-muted-foreground">Upload your resume to get AI-powered feedback and customized cold emails.</p>
+        <p className="text-muted-foreground">Paste your resume text to get AI-powered feedback and customized cold emails.</p>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
-        <Card className="border-dashed border-2">
+        <Card className="border-2">
           <CardHeader>
-            <CardTitle>Upload Resume</CardTitle>
-            <CardDescription>PDF, DOCX up to 5MB</CardDescription>
+            <CardTitle>Input Details</CardTitle>
+            <CardDescription>Paste your resume and target job description</CardDescription>
           </CardHeader>
-          <CardContent className="flex flex-col items-center justify-center space-y-4 py-8">
-            <div className="rounded-full bg-primary/10 p-4">
-              <Upload className="h-8 w-8 text-primary" />
+          <CardContent className="space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="resume-text" className="flex items-center gap-2">
+                <FileText className="h-4 w-4" /> Resume Text
+              </Label>
+              <Textarea 
+                id="resume-text" 
+                placeholder="Paste the raw text of your resume here..." 
+                className="min-h-[200px]"
+                value={resumeText}
+                onChange={(e) => setResumeText(e.target.value)}
+              />
             </div>
-            <Label htmlFor="resume-upload" className="cursor-pointer">
-              <div className="bg-secondary text-secondary-foreground hover:bg-secondary/80 h-10 px-4 py-2 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors">
-                Select File
-              </div>
-              <Input id="resume-upload" type="file" className="hidden" onChange={handleFileChange} accept=".pdf,.doc,.docx" />
-            </Label>
-            {file && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <FileText className="h-4 w-4" /> {file.name}
+            
+            <div className="space-y-2">
+              <Label htmlFor="job-description" className="flex items-center gap-2">
+                <Briefcase className="h-4 w-4" /> Target Job Description (Optional)
+              </Label>
+              <Textarea 
+                id="job-description" 
+                placeholder="Paste the job description you are targeting..." 
+                className="min-h-[120px]"
+                value={jobDescription}
+                onChange={(e) => setJobDescription(e.target.value)}
+              />
+            </div>
+          </CardContent>
+          <CardFooter className="flex-col items-start gap-4">
+            {errorMsg && (
+              <div className="flex items-center gap-2 text-sm font-medium text-destructive">
+                <AlertCircle className="h-4 w-4" />
+                {errorMsg}
               </div>
             )}
-          </CardContent>
-          <CardFooter>
-            <Button className="w-full" disabled={!file || isReviewing} onClick={handleReview}>
-              {isReviewing ? "Analyzing..." : "Review Resume"}
+            <Button className="w-full" disabled={!resumeText.trim() || isReviewing} onClick={handleReview}>
+              {isReviewing ? "Analyzing with AI..." : "Review Resume"}
             </Button>
           </CardFooter>
         </Card>
@@ -76,16 +103,21 @@ export default function ResumeReviewPage() {
           <CardContent>
             {reviewResult ? (
               <div className="space-y-4">
-                <div className="flex items-start gap-3 rounded-lg border p-4 bg-muted/50">
-                  <CheckCircle2 className="h-5 w-5 text-green-500 mt-0.5" />
-                  <p className="text-sm leading-relaxed">{reviewResult}</p>
+                <div className="rounded-lg border p-4 bg-muted/50 max-h-[500px] overflow-y-auto">
+                  <div className="flex items-start gap-3 mb-4">
+                    <CheckCircle2 className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
+                    <h3 className="font-semibold text-lg">Review Complete</h3>
+                  </div>
+                  <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap">
+                    {reviewResult}
+                  </div>
                 </div>
                 <Button variant="outline" className="w-full">Generate Tailored Cold Email</Button>
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center h-40 text-center space-y-2 text-muted-foreground">
-                <Sparkles className="h-8 w-8 opacity-20" />
-                <p className="text-sm">Upload and review your resume to generate insights.</p>
+              <div className="flex flex-col items-center justify-center h-[400px] text-center space-y-4 text-muted-foreground border-2 border-dashed rounded-lg">
+                <Sparkles className="h-12 w-12 opacity-20" />
+                <p className="text-sm max-w-[250px]">Paste your resume and click review to generate AI insights.</p>
               </div>
             )}
           </CardContent>
@@ -94,3 +126,4 @@ export default function ResumeReviewPage() {
     </div>
   )
 }
+

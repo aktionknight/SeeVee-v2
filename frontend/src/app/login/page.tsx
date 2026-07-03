@@ -7,8 +7,9 @@ import { useAuth } from '@/context/AuthContext';
 import { GoogleSignInButton } from '@/components/GoogleSignInButton';
 import { AlertCircle, Shield, Mail, FileText } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { Suspense } from 'react';
 
-export default function LoginPage() {
+function LoginContent() {
   const { user, isLoading } = useAuth();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -73,5 +74,13 @@ export default function LoginPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">Loading...</div>}>
+      <LoginContent />
+    </Suspense>
   );
 }

@@ -3,13 +3,13 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { 
-  Mail, 
-  Webhook, 
-  ArrowRight, 
-  LogOut, 
-  Settings, 
-  CheckCircle2, 
+import {
+  Mail,
+  Webhook,
+  ArrowRight,
+  LogOut,
+  Settings,
+  CheckCircle2,
   XCircle,
   Users,
   Send,
@@ -22,40 +22,68 @@ import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { api } from "@/lib/api";
 
+interface ActivityItem {
+  id: string;
+  status: 'success' | 'warning' | 'info';
+  type: 'email_sent' | 'response' | 'lead_added';
+  message: string;
+  time: string;
+}
+
 export default function DashboardPage() {
   const { user, logout } = useAuth();
   const [gmailStatus, setGmailStatus] = useState<{ connected: boolean; email: string } | null>(null);
   const [leads, setLeads] = useState<any[]>([]);
+  const [emailRecords, setEmailRecords] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     Promise.all([
       api.getGmailStatus().catch(() => ({ gmail_connected: false, email: "" })),
-      api.listLeads().catch(() => [])
-    ]).then(([gmailRes, leadsRes]) => {
+      api.listLeads().catch(() => []),
+      api.listEmailRecords().catch(() => [])
+    ]).then(([gmailRes, leadsRes, emailsRes]) => {
       setGmailStatus({ connected: gmailRes.gmail_connected, email: gmailRes.email });
-      setLeads(leadsRes || []);
+      setLeads(Array.isArray(leadsRes) ? leadsRes : []);
+      setEmailRecords(Array.isArray(emailsRes) ? emailsRes : []);
+      setIsLoading(false);
+    }).catch((err) => {
+      console.error('Error in dashboard metrics loading:', err);
       setIsLoading(false);
     });
   }, []);
 
-  // Mocked Metrics
+  // Metrics from real data
   const totalLeads = leads.length;
-  const emailsSent = Math.floor(totalLeads * 0.8) || 124;
-  const responses = Math.floor(emailsSent * 0.25) || 31;
+  const emailsSent = emailRecords.length;
+  const responses = emailRecords.filter(e => e.status === 'replied' || e.status === 'response').length;
   const responseRate = emailsSent ? Math.round((responses / emailsSent) * 100) : 0;
 
-  // Mocked Recent Activity
-  const recentActivity = [
-    { id: 1, type: "email_sent", message: "Outreach email sent to Sarah Jenkins", time: "2 hours ago", status: "success" },
-    { id: 2, type: "response", message: "Response received from TechCorp Inc.", time: "5 hours ago", status: "info" },
-    { id: 3, type: "lead_added", message: "New lead extracted from LinkedIn", time: "1 day ago", status: "success" },
-    { id: 4, type: "draft_created", message: "Draft generated for 'Frontend Developer' at Acme", time: "1 day ago", status: "warning" },
-  ];
+  // Recent Activity from real data
+  const recentActivity: ActivityItem[] = [
+    ...emailRecords.map((e) => ({
+      id: `email_${e.id}`,
+      status: (e.status === 'replied' || e.status === 'response') ? 'success' : 'info',
+      type: (e.status === 'replied' || e.status === 'response') ? 'response' : 'email_sent',
+      message: (e.status === 'replied' || e.status === 'response') ? `Received response from ${e.recipient_email}` : `Sent email to ${e.recipient_email}`,
+      time: new Date(e.created_at || Date.now()).toLocaleDateString(),
+      timestamp: new Date(e.created_at || Date.now()).getTime(),
+    })),
+    ...leads.map((l) => ({
+      id: `lead_${l.id}`,
+      status: 'info',
+      type: 'lead_added',
+      message: `Added lead: ${l.person_name || l.email || 'Unknown'}`,
+      time: new Date(l.created_at || Date.now()).toLocaleDateString(),
+      timestamp: new Date(l.created_at || Date.now()).getTime(),
+    }))
+  ]
+    .sort((a, b) => b.timestamp - a.timestamp)
+    .slice(0, 5) as unknown as ActivityItem[];
 
   return (
     <div className="flex min-h-screen flex-col p-8 md:p-16 space-y-10 animate-in fade-in duration-500">
-      
+
       {/* Header Section */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         <div>
@@ -147,9 +175,9 @@ export default function DashboardPage() {
           <CardContent>
             <div className="text-3xl font-bold">{isLoading ? "..." : `${responseRate}%`}</div>
             <div className="w-full bg-secondary h-2 mt-3 rounded-full overflow-hidden">
-              <div 
-                className="bg-orange-500 h-full rounded-full transition-all duration-1000 ease-in-out" 
-                style={{ width: `${responseRate}%` }} 
+              <div
+                className="bg-orange-500 h-full rounded-full transition-all duration-1000 ease-in-out"
+                style={{ width: `${responseRate}%` }}
               />
             </div>
           </CardContent>
@@ -158,11 +186,11 @@ export default function DashboardPage() {
 
       {/* Main Content Grid */}
       <div className="grid gap-8 grid-cols-1 lg:grid-cols-3">
-        
+
         {/* Left Column: Integrations */}
         <div className="flex flex-col gap-6 lg:col-span-1">
           <h2 className="text-2xl font-semibold tracking-tight">Integrations</h2>
-          
+
           <Card className="relative overflow-hidden group">
             <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
             <CardHeader>
@@ -246,7 +274,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Right Column: Activity & Status */}
-        <div className="flex flex-col gap-6 lg:col-span-2">
+        <div className="flex flex-col gap-6 lg:col-span-2 ">
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-semibold tracking-tight">Recent Activity</h2>
             <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary">
@@ -254,26 +282,24 @@ export default function DashboardPage() {
             </Button>
           </div>
 
-          <Card className="h-[380px] flex flex-col shadow-sm border-border/50">
+          <Card className="h-[380px] flex flex-col shadow-sm border-border/50 ">
             <CardHeader className="pb-3 border-b border-border/40">
-              <CardTitle className="text-lg font-medium">Live Feed</CardTitle>
+              <CardTitle className="text-lg font-medium ">Live Feed</CardTitle>
             </CardHeader>
-            <CardContent className="p-0 overflow-y-auto flex-1">
+            <CardContent className="p-0 overflow-hidden flex-1">
               {recentActivity.map((item, i) => (
-                <div 
-                  key={item.id} 
-                  className={`flex items-start gap-4 p-4 border-b border-border/40 hover:bg-muted/30 transition-colors ${
-                    i === recentActivity.length - 1 ? 'border-0' : ''
-                  }`}
+                <div
+                  key={item.id}
+                  className={`flex items-start gap-4 p-4 border-b border-border/40 hover:bg-muted/30 transition-colors  ${i === recentActivity.length - 1 ? 'border-0' : ''
+                    }`}
                 >
-                  <div className={`mt-0.5 p-2 rounded-full ${
-                    item.status === 'success' ? 'bg-green-500/10 text-green-500' :
+                  <div className={`mt-0.5 p-2 rounded-full ${item.status === 'success' ? 'bg-green-500/10 text-green-500' :
                     item.status === 'warning' ? 'bg-orange-500/10 text-orange-500' :
-                    'bg-blue-500/10 text-blue-500'
-                  }`}>
+                      'bg-blue-500/10 text-blue-500'
+                    }`}>
                     {item.type === 'email_sent' ? <Send className="h-4 w-4" /> :
-                     item.type === 'response' ? <MessageCircle className="h-4 w-4" /> :
-                     <UserPlus className="h-4 w-4" />}
+                      item.type === 'response' ? <MessageCircle className="h-4 w-4" /> :
+                        <UserPlus className="h-4 w-4" />}
                   </div>
                   <div className="flex-1 space-y-1">
                     <p className="text-sm font-medium leading-none">{item.message}</p>
@@ -283,13 +309,13 @@ export default function DashboardPage() {
               ))}
             </CardContent>
             <CardFooter className="p-4 bg-muted/20 border-t border-border/40 flex justify-between items-center rounded-b-xl">
-               <span className="text-xs text-muted-foreground flex items-center">
-                 <span className="h-2 w-2 rounded-full bg-green-500 mr-2 animate-pulse" />
-                 System operating normally
-               </span>
-               <Link href="/dashboard/leads" className="text-xs font-medium text-primary hover:underline flex items-center">
-                 Launch new campaign <ArrowRight className="ml-1 h-3 w-3" />
-               </Link>
+              <span className="text-xs text-muted-foreground flex items-center">
+                <span className="h-2 w-2 rounded-full bg-green-500 mr-2 animate-pulse" />
+                System operating normally
+              </span>
+              <Link href="/dashboard/leads" className="text-xs font-medium text-primary hover:underline flex items-center">
+                Launch new campaign <ArrowRight className="ml-1 h-3 w-3" />
+              </Link>
             </CardFooter>
           </Card>
         </div>

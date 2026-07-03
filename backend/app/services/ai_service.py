@@ -17,11 +17,23 @@ class LeadIntelligencePipeline:
         # Initialize Google GenAI client
         self.client = genai.Client(api_key=settings.GOOGLE_API_KEY)
 
-    async def run_pipeline(self, lead_id: int, user_profile: dict, company_data: dict, founder_data: dict, product_data: dict):
+    async def run_pipeline(self, lead_id: int, user_profile: dict, company_data: dict, founder_data: dict, product_data: dict, query: str = None):
         result = await self.db.execute(select(Lead).filter(Lead.id == lead_id))
         lead = result.scalars().first()
         if not lead:
             raise ValueError(f"Lead with ID {lead_id} not found")
+
+        # Step 0: Qualification Agent
+        qualification = await self._run_qualification_agent(founder_data, company_data)
+        if not qualification.get("is_qualified", True):
+            lead.is_qualified = False
+            lead.disqualification_reason = qualification.get("reason", "Unknown")
+            lead.status = "unqualified"
+            await self.db.commit()
+            return {
+                "status": "unqualified",
+                "reason": lead.disqualification_reason
+            }
 
         # Step 1: Research Agent
         research_profile = await self._run_research_agent(lead_id, founder_data, company_data)
@@ -39,7 +51,7 @@ class LeadIntelligencePipeline:
         scoring_data = await self._run_scoring_agent(lead_id, insights, match_data, opportunity_data)
 
         # Step 6: Content Generation Agent
-        email_content = await self._run_content_generation_email(lead_id, insights, match_data, opportunity_data, user_profile)
+        email_content = await self._run_content_generation_email(lead_id, insights, match_data, opportunity_data, user_profile, query)
         linkedin_content = await self._run_content_generation_linkedin(lead_id, insights, match_data, opportunity_data, user_profile)
 
         return {
@@ -72,6 +84,21 @@ class LeadIntelligencePipeline:
         except Exception as e:
             logger.error(f"Error calling Gemini API: {e}")
             return {}
+
+    async def _run_qualification_agent(self, founder_data: dict, company_data: dict) -> dict:
+        prompt = f"""
+        Evaluate the following founder and company profile to determine if there is enough substantive information to draft a highly personalized cold email.
+        Founder Data: {json.dumps(founder_data)}
+        Company Data: {json.dumps(company_data)}
+
+        Criteria for Disqualification:
+        1. The company is marked as "Stealth" or "Stealth Startup" with no other details.
+        2. The founder profile has virtually no bio, career history, or details beyond a name and title.
+        3. The data is largely empty or consists of placeholders.
+
+        Return ONLY valid JSON with keys: 'is_qualified' (boolean) and 'reason' (string explaining why if unqualified, or empty string if qualified).
+        """
+        return await self._call_gemini_json(prompt)
 
     async def _run_research_agent(self, lead_id: int, founder_data: dict, company_data: dict) -> dict:
         prompt = f"""
@@ -185,21 +212,22 @@ class LeadIntelligencePipeline:
             
         return result
 
-    async def _run_content_generation_email(self, lead_id: int, insights: dict, match_data: dict, opportunity_data: dict, user_profile: dict) -> dict:
+    async def _run_content_generation_email(self, lead_id: int, insights: dict, match_data: dict, opportunity_data: dict, user_profile: dict, query: str = None) -> dict:
+        intent_section = f"Intent / Query: {query}\n" if query else ""
         prompt = f"""
         Generate a cold email based on this data:
         Hooks: {json.dumps(insights.get("hooks", []))}
         Shared Context: {json.dumps(match_data.get("shared_context", []))}
         Pain Points: {json.dumps(opportunity_data.get("pain_points", []))}
         User Profile: {json.dumps(user_profile)}
-
+        {intent_section}
         Requirements:
         - Mention exactly one founder hook
         - Mention one relevant pain point
         - Under 120 words
         - No hype
         - No buzzwords
-        - One Call to Action (CTA)
+        - One Call to Action (CTA) based on the Intent/Query (if provided) or a general meeting request.
 
         Return ONLY valid JSON in this format: {{"subject": "...", "body": "..."}}
         """

@@ -4,8 +4,9 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { ArrowLeft, Send, Sparkles, User, Briefcase, Mail, CheckCircle2, Target, Lightbulb, MessageSquare } from "lucide-react";
+import { ArrowLeft, Send, Sparkles, User, Briefcase, Mail, CheckCircle2, Target, Lightbulb, MessageSquare, Loader2 } from "lucide-react";
 import Link from "next/link";
 
 export default function OutreachPage() {
@@ -18,6 +19,8 @@ export default function OutreachPage() {
   const [content, setContent] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [query, setQuery] = useState("");
+  const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
     if (leadId) {
@@ -69,6 +72,30 @@ export default function OutreachPage() {
       alert("Failed to send email. Check if Gmail is connected.");
     } finally {
       setSending(false);
+    }
+  };
+
+  const handleRegenerate = async () => {
+    if (!lead) return;
+    setGenerating(true);
+    try {
+      const res = await api.generateIntelligence({
+        lead_id: lead.id,
+        user_profile: { name: "User", company: "SeeVee", product: "AI Sales Engine" },
+        company_data: { name: lead.company_name },
+        founder_data: { name: lead.person_name, role: lead.person_role },
+        product_data: { description: "Outbound AI outreach generator" },
+        query: query
+      });
+      if (res?.data?.status === "unqualified") {
+        alert(`Lead Unqualified: ${res.data.reason}`);
+      }
+      await fetchData();
+    } catch (err) {
+      console.error(err);
+      alert("Failed to generate outreach.");
+    } finally {
+      setGenerating(false);
     }
   };
 
@@ -154,6 +181,26 @@ export default function OutreachPage() {
 
         {/* Right Column: Generated Content */}
         <div className="space-y-8 lg:col-span-2">
+
+          <Card className="border-white/10 bg-black/40 backdrop-blur-xl">
+            <CardHeader>
+              <CardTitle className="text-xl text-white">Generation Intent</CardTitle>
+              <CardDescription className="text-gray-400">Specify the intent of the cold outreach (e.g. asking for internship, selling a product).</CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col sm:flex-row gap-4">
+              <Input 
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="e.g. Request an internship opportunity"
+                className="bg-black/50 border-white/10 text-white focus-visible:ring-primary flex-1"
+              />
+              <Button onClick={handleRegenerate} disabled={generating} className="bg-primary hover:bg-primary/90 text-white sm:min-w-[140px]">
+                {generating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Sparkles className="w-4 h-4 mr-2" />}
+                Generate
+              </Button>
+            </CardContent>
+          </Card>
+
           {!content ? (
             <Card className="border-white/10 bg-black/40 backdrop-blur-xl h-full flex flex-col items-center justify-center p-12 text-center">
               <Sparkles className="w-12 h-12 text-gray-600 mb-4" />

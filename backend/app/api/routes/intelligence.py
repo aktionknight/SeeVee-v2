@@ -15,6 +15,7 @@ class PipelineRequest(BaseModel):
     company_data: Dict[str, Any]
     founder_data: Dict[str, Any]
     product_data: Dict[str, Any]
+    query: Optional[str] = None
 
 class ContentRequest(BaseModel):
     lead_id: int
@@ -28,7 +29,8 @@ async def generate_intelligence(request: PipelineRequest, db: AsyncSession = Dep
             user_profile=request.user_profile,
             company_data=request.company_data,
             founder_data=request.founder_data,
-            product_data=request.product_data
+            product_data=request.product_data,
+            query=request.query
         )
         return {"status": "success", "data": results}
     except ValueError as e:

@@ -3,7 +3,6 @@ from typing import Optional
 from datetime import datetime
 
 class CampaignBase(BaseModel):
-    user_id: int
     name: str
     status: Optional[str] = "draft"
 
@@ -16,6 +15,7 @@ class CampaignUpdate(BaseModel):
 
 class CampaignResponse(CampaignBase):
     id: int
+    user_id: int
     created_at: datetime
     updated_at: Optional[datetime]
 
