@@ -138,7 +138,7 @@ export default function LeadsPage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col p-8 md:p-16 lg:p-24 space-y-12 animate-in fade-in duration-500 relative">
+    <div className="flex min-h-screen flex-col p-2 md:p-10 lg:py-[0] lg:px-24 space-y-5 animate-in fade-in duration-500 relative">
 
       {/* Background elements for rich aesthetics */}
       <div className="fixed top-[-20%] left-[-10%] w-[50%] h-[50%] bg-primary/10 blur-[150px] rounded-full pointer-events-none -z-10" />
@@ -321,8 +321,8 @@ export default function LeadsPage() {
                       View LinkedIn Profile
                     </a>
                     <div className="flex gap-2 w-full">
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         className="w-full flex items-center justify-center gap-2 border-primary/40 hover:bg-primary/20 text-primary transition-all duration-300 rounded-xl"
                         disabled={generatingFor === lead.id}
                         onClick={() => handleGenerate(lead)}
@@ -331,8 +331,8 @@ export default function LeadsPage() {
                         {generatingFor === lead.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
                       </Button>
                       <Link href={`/dashboard/outreach/${lead.id}`} className="w-full">
-                        <Button 
-                          variant="secondary" 
+                        <Button
+                          variant="secondary"
                           className="w-full flex items-center justify-center gap-2 transition-all duration-300 rounded-xl bg-white/10 hover:bg-white/20 text-white"
                         >
                           View Outreach <ArrowRight className="w-4 h-4" />
@@ -343,8 +343,8 @@ export default function LeadsPage() {
                 ) : (
                   <CardFooter className="pt-0 pb-5 px-6 flex-col gap-3">
                     <div className="flex gap-2 w-full">
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         className="w-full flex items-center justify-center gap-2 border-primary/40 hover:bg-primary/20 text-primary transition-all duration-300 rounded-xl"
                         disabled={generatingFor === lead.id}
                         onClick={() => handleGenerate(lead)}
@@ -353,8 +353,8 @@ export default function LeadsPage() {
                         {generatingFor === lead.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
                       </Button>
                       <Link href={`/dashboard/outreach/${lead.id}`} className="w-full">
-                        <Button 
-                          variant="secondary" 
+                        <Button
+                          variant="secondary"
                           className="w-full flex items-center justify-center gap-2 transition-all duration-300 rounded-xl bg-white/10 hover:bg-white/20 text-white"
                         >
                           View Outreach <ArrowRight className="w-4 h-4" />

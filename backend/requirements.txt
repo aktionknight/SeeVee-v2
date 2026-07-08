@@ -17,4 +17,5 @@ chromadb>=0.4.0
 langgraph
 langchain_google_genai
 apify-client>=1.0.0
-
+PyMuPDF>=1.24.0
+python-multipart>=0.0.6

@@ -20,14 +20,19 @@ class ApiClient {
   async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
     let response: Response;
+
+    // If caller explicitly passes headers (even empty {}), use those as-is
+    // to avoid overriding Content-Type for FormData uploads
+    const hasExplicitHeaders = 'headers' in options;
+    const mergedHeaders = hasExplicitHeaders
+      ? (options.headers as HeadersInit)
+      : { ...this.getHeaders() };
+
     try {
       response = await fetch(url, {
         ...options,
         credentials: 'include', // Always send cookies
-        headers: {
-          ...this.getHeaders(),
-          ...options.headers,
-        },
+        headers: mergedHeaders,
       });
     } catch (error) {
       console.error('Network request failed:', error);
@@ -210,7 +215,7 @@ class ApiClient {
   }
 
   // -----------------------------------------------------------------------
-  // Resume Review
+  // Resume Review (legacy)
   // -----------------------------------------------------------------------
 
   async reviewResumeText(data: { resume_text: string; job_description?: string; use_career_context?: boolean; top_k?: number }) {
@@ -226,7 +231,152 @@ class ApiClient {
       body: JSON.stringify(data),
     });
   }
+
+  // -----------------------------------------------------------------------
+  // Documents — Resume PDF upload & processing
+  // -----------------------------------------------------------------------
+
+  async uploadResumePdf(file: File) {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.request<any>('/api/v1/documents/resume', {
+      method: 'POST',
+      headers: {}, // Let browser set content-type for FormData
+      body: formData,
+    });
+  }
+
+  async getDocumentStatus(documentId: number) {
+    return this.request<any>(`/api/v1/documents/${documentId}/status`);
+  }
+
+  // -----------------------------------------------------------------------
+  // Career Profile
+  // -----------------------------------------------------------------------
+
+  async getCareerProfile() {
+    return this.request<any>('/api/v1/profile');
+  }
+
+  async updateCareerProfile(data: any) {
+    return this.request<any>('/api/v1/profile', { method: 'PATCH', body: JSON.stringify(data) });
+  }
+
+  // -----------------------------------------------------------------------
+  // Profile — Projects
+  // -----------------------------------------------------------------------
+
+  async listProjects() {
+    return this.request<any[]>('/api/v1/profile/projects');
+  }
+
+  async createProject(data: any) {
+    return this.request<any>('/api/v1/profile/projects', { method: 'POST', body: JSON.stringify(data) });
+  }
+
+  async updateProject(id: number, data: any) {
+    return this.request<any>(`/api/v1/profile/projects/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+  }
+
+  async deleteProject(id: number) {
+    return this.request<{ ok: boolean }>(`/api/v1/profile/projects/${id}`, { method: 'DELETE' });
+  }
+
+  // -----------------------------------------------------------------------
+  // Profile — Skills
+  // -----------------------------------------------------------------------
+
+  async listSkills() {
+    return this.request<any[]>('/api/v1/profile/skills');
+  }
+
+  async createSkill(data: any) {
+    return this.request<any>('/api/v1/profile/skills', { method: 'POST', body: JSON.stringify(data) });
+  }
+
+  async deleteSkill(id: number) {
+    return this.request<{ ok: boolean }>(`/api/v1/profile/skills/${id}`, { method: 'DELETE' });
+  }
+
+  // -----------------------------------------------------------------------
+  // Profile — Experiences
+  // -----------------------------------------------------------------------
+
+  async listExperiences() {
+    return this.request<any[]>('/api/v1/profile/experiences');
+  }
+
+  async createExperience(data: any) {
+    return this.request<any>('/api/v1/profile/experiences', { method: 'POST', body: JSON.stringify(data) });
+  }
+
+  async updateExperience(id: number, data: any) {
+    return this.request<any>(`/api/v1/profile/experiences/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+  }
+
+  async deleteExperience(id: number) {
+    return this.request<{ ok: boolean }>(`/api/v1/profile/experiences/${id}`, { method: 'DELETE' });
+  }
+
+  // -----------------------------------------------------------------------
+  // Profile — Education
+  // -----------------------------------------------------------------------
+
+  async listEducation() {
+    return this.request<any[]>('/api/v1/profile/education');
+  }
+
+  async createEducation(data: any) {
+    return this.request<any>('/api/v1/profile/education', { method: 'POST', body: JSON.stringify(data) });
+  }
+
+  async deleteEducation(id: number) {
+    return this.request<{ ok: boolean }>(`/api/v1/profile/education/${id}`, { method: 'DELETE' });
+  }
+
+  // -----------------------------------------------------------------------
+  // Profile — Achievements
+  // -----------------------------------------------------------------------
+
+  async listAchievements() {
+    return this.request<any[]>('/api/v1/profile/achievements');
+  }
+
+  async createAchievement(data: any) {
+    return this.request<any>('/api/v1/profile/achievements', { method: 'POST', body: JSON.stringify(data) });
+  }
+
+  async deleteAchievement(id: number) {
+    return this.request<{ ok: boolean }>(`/api/v1/profile/achievements/${id}`, { method: 'DELETE' });
+  }
+
+  // -----------------------------------------------------------------------
+  // Job Analysis
+  // -----------------------------------------------------------------------
+
+  async analyzeJobDescription(data: { raw_text: string; company_name?: string }) {
+    return this.request<any>('/api/v1/jobs/analyze', { method: 'POST', body: JSON.stringify(data) });
+  }
+
+  async listJobAnalyses() {
+    return this.request<any[]>('/api/v1/jobs/analyses');
+  }
+
+  // -----------------------------------------------------------------------
+  // Resume Generation
+  // -----------------------------------------------------------------------
+
+  async generateTailoredResume(data: { job_description_id: number; pinned_project_ids?: number[]; excluded_project_ids?: number[] }) {
+    return this.request<any>('/api/v1/applications/generate', { method: 'POST', body: JSON.stringify(data) });
+  }
+
+  async listGeneratedResumes() {
+    return this.request<any[]>('/api/v1/applications/resumes');
+  }
+
+  async getGeneratedResume(id: number) {
+    return this.request<any>(`/api/v1/applications/resumes/${id}`);
+  }
 }
 
 export const api = new ApiClient(API_BASE_URL);
-
