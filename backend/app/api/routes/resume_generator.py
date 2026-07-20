@@ -45,15 +45,15 @@ async def generate_resume(req: GenerateRequest, db: AsyncSession = Depends(get_d
 
     # Fetch projects
     res_proj = await db.execute(select(Project).filter(Project.user_id == current_user.id, Project.is_visible == True))
-    all_projects = [p.__dict__ for p in res_proj.scalars().all()]
+    all_projects = [{k: v for k, v in p.__dict__.items() if k != '_sa_instance_state'} for p in res_proj.scalars().all()]
     
     # Fetch experiences
     res_exp = await db.execute(select(Experience).filter(Experience.user_id == current_user.id))
-    all_experiences = [e.__dict__ for e in res_exp.scalars().all()]
+    all_experiences = [{k: v for k, v in e.__dict__.items() if k != '_sa_instance_state'} for e in res_exp.scalars().all()]
 
     # Fetch achievements
     res_ach = await db.execute(select(Achievement).filter(Achievement.user_id == current_user.id))
-    all_achievements = [a.__dict__ for a in res_ach.scalars().all()]
+    all_achievements = [{k: v for k, v in a.__dict__.items() if k != '_sa_instance_state'} for a in res_ach.scalars().all()]
 
     # 3. Retrieve Evidence
     # Use role title + keywords as query
@@ -125,3 +125,41 @@ async def get_generated_resume(resume_id: int, db: AsyncSession = Depends(get_db
     if not resume:
         raise HTTPException(status_code=404, detail="Generated resume not found")
     return resume
+
+from fastapi.responses import Response, FileResponse
+from app.services.latex_generation_service import json_to_latex, compile_latex_to_pdf
+
+UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "uploads", "resumes")
+@router.get("/resumes/{resume_id}/latex")
+async def get_resume_latex(resume_id: int, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    result = await db.execute(select(GeneratedResume).filter(GeneratedResume.id == resume_id, GeneratedResume.user_id == current_user.id))
+    resume = result.scalars().first()
+    if not resume:
+        raise HTTPException(status_code=404, detail="Generated resume not found")
+    
+    latex_str = json_to_latex(resume.resume_json, candidate_name=current_user.name, email=current_user.email)
+    return Response(content=latex_str, media_type="text/x-tex", headers={"Content-Disposition": f"attachment; filename=resume_{resume_id}.tex"})
+
+@router.get("/resumes/{resume_id}/pdf")
+async def get_resume_pdf(resume_id: int, inline: bool = False, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    result = await db.execute(select(GeneratedResume).filter(GeneratedResume.id == resume_id, GeneratedResume.user_id == current_user.id))
+    resume = result.scalars().first()
+    if not resume:
+        raise HTTPException(status_code=404, detail="Generated resume not found")
+    
+    user_dir = os.path.join(UPLOAD_DIR, str(current_user.id))
+    os.makedirs(user_dir, exist_ok=True)
+    
+    pdf_path = os.path.join(user_dir, f"resume_{resume_id}.pdf")
+    
+    if not os.path.exists(pdf_path):
+        latex_str = json_to_latex(resume.resume_json, candidate_name=current_user.name, email=current_user.email)
+        try:
+            compile_latex_to_pdf(latex_str, output_dir=user_dir, filename=f"resume_{resume_id}.pdf")
+        except RuntimeError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+            
+    if inline:
+        return FileResponse(path=pdf_path, media_type="application/pdf")
+    else:
+        return FileResponse(path=pdf_path, media_type="application/pdf", filename=f"resume_{resume_id}.pdf")

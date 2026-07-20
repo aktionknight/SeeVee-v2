@@ -63,11 +63,11 @@ Output ONLY the JSON object. Do not include markdown formatting like ```json.
 
 def generate_tailored_resume(career_profile: dict, jd_analysis: dict, selected_projects: list, selected_experiences: list, selected_achievements: list) -> dict:
     prompt = PROMPT_TEMPLATE.format(
-        jd_analysis=json.dumps(jd_analysis, indent=2),
+        jd_analysis=json.dumps(jd_analysis, indent=2, default=str),
         summary=career_profile.get('summary', ''),
-        projects=json.dumps(selected_projects, indent=2),
-        experiences=json.dumps(selected_experiences, indent=2),
-        achievements=json.dumps(selected_achievements, indent=2)
+        projects=json.dumps(selected_projects, indent=2, default=str),
+        experiences=json.dumps(selected_experiences, indent=2, default=str),
+        achievements=json.dumps(selected_achievements, indent=2, default=str)
     )
     
     try:

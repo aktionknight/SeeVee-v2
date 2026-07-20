@@ -85,48 +85,58 @@ export function ResumeGenerator() {
         </CardHeader>
         <CardContent>
           {resumeData ? (
-            <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
-              <div className="bg-muted/50 p-4 rounded-lg border">
-                <h3 className="font-semibold text-lg mb-2">Professional Summary</h3>
-                <p className="text-sm text-muted-foreground">{resumeData.resume_json?.summary}</p>
-                
-                <h3 className="font-semibold text-lg mt-4 mb-2">Skills</h3>
-                <div className="flex flex-wrap gap-2">
-                  {resumeData.resume_json?.skills?.map((skill: string, i: number) => (
-                    <span key={i} className="px-2 py-1 bg-primary/10 text-primary rounded-md text-xs">
-                      {skill}
-                    </span>
-                  ))}
-                </div>
+            <div className="space-y-4">
+              <div className="flex gap-2 mb-2">
+                <Button className="flex-1" variant="outline" onClick={() => api.downloadResume(resumeData.id, "pdf").catch(e => console.error(e))}>
+                  Download PDF
+                </Button>
+                <Button className="flex-1" variant="outline" onClick={() => api.downloadResume(resumeData.id, "latex").catch(e => console.error(e))}>
+                  Download LaTeX
+                </Button>
+              </div>
+              <div className="space-y-4 max-h-[420px] overflow-y-auto pr-2">
+                <div className="bg-muted/50 p-4 rounded-lg border">
+                  <h3 className="font-semibold text-lg mb-2">Professional Summary</h3>
+                  <p className="text-sm text-muted-foreground">{resumeData.resume_json?.summary}</p>
+                  
+                  <h3 className="font-semibold text-lg mt-4 mb-2">Skills</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {resumeData.resume_json?.skills?.map((skill: string, i: number) => (
+                      <span key={i} className="px-2 py-1 bg-primary/10 text-primary rounded-md text-xs">
+                        {skill}
+                      </span>
+                    ))}
+                  </div>
 
-                <h3 className="font-semibold text-lg mt-4 mb-2">Projects</h3>
-                <div className="space-y-3">
-                  {resumeData.resume_json?.projects?.map((proj: any, i: number) => (
-                    <div key={i} className="border-l-2 border-primary/50 pl-3">
-                      <div className="font-medium">{proj.title}</div>
-                      <div className="text-xs text-muted-foreground mb-1">{proj.technologies?.join(", ")}</div>
-                      <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
-                        {proj.bullets?.map((b: string, j: number) => (
-                          <li key={j}>{b}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  ))}
-                </div>
+                  <h3 className="font-semibold text-lg mt-4 mb-2">Projects</h3>
+                  <div className="space-y-3">
+                    {resumeData.resume_json?.projects?.map((proj: any, i: number) => (
+                      <div key={i} className="border-l-2 border-primary/50 pl-3">
+                        <div className="font-medium">{proj.title}</div>
+                        <div className="text-xs text-muted-foreground mb-1">{proj.technologies?.join(", ")}</div>
+                        <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
+                          {proj.bullets?.map((b: string, j: number) => (
+                            <li key={j}>{b}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
 
-                <h3 className="font-semibold text-lg mt-4 mb-2">Experience</h3>
-                <div className="space-y-3">
-                  {resumeData.resume_json?.experience?.map((exp: any, i: number) => (
-                    <div key={i} className="border-l-2 border-primary/50 pl-3">
-                      <div className="font-medium">{exp.title}</div>
-                      <div className="text-sm text-muted-foreground">{exp.company} | {exp.dates}</div>
-                      <ul className="list-disc list-inside text-sm text-muted-foreground mt-1 space-y-1">
-                        {exp.bullets?.map((b: string, j: number) => (
-                          <li key={j}>{b}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  ))}
+                  <h3 className="font-semibold text-lg mt-4 mb-2">Experience</h3>
+                  <div className="space-y-3">
+                    {resumeData.resume_json?.experience?.map((exp: any, i: number) => (
+                      <div key={i} className="border-l-2 border-primary/50 pl-3">
+                        <div className="font-medium">{exp.title}</div>
+                        <div className="text-sm text-muted-foreground">{exp.company} | {exp.dates}</div>
+                        <ul className="list-disc list-inside text-sm text-muted-foreground mt-1 space-y-1">
+                          {exp.bullets?.map((b: string, j: number) => (
+                            <li key={j}>{b}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>

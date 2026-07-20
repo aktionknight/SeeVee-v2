@@ -1,0 +1,112 @@
+\documentclass[10pt,a4paper]{article}
+
+\usepackage[margin=0.5in]{geometry}
+\usepackage{hyperref}
+\usepackage{array}
+\usepackage{enumitem}
+
+\pagestyle{empty}
+
+\newcommand{\sectionheading}[1]{%
+    \vspace{6pt}
+    {\large\textbf{#1}}
+    \vspace{4pt}
+    \hrule
+    \vspace{4pt}
+}
+
+\begin{document}
+
+%========================
+% HEADER
+%========================
+
+\begin{center}
+    {\LARGE\textbf{FULL NAME}}\\
+    \href{mailto:email@example.com}{email@example.com} \quad
+    \href{https://linkedin.com/in/username}{linkedin.com/in/username} \quad
+    \href{https://github.com/username}{github.com/username} \quad
+    +00 0000000000
+\end{center}
+
+\vspace{4pt}
+
+%========================
+% EDUCATION
+%========================
+
+\sectionheading{EDUCATION}
+
+\textbf{University Name} \hfill Start Year -- End Year\\
+Degree Name \hfill GPA/CGPA
+
+\vspace{4pt}
+
+%========================
+% EXPERIENCE
+%========================
+
+\sectionheading{EXPERIENCE}
+
+\textbf{Company Name} \hfill Dates\\
+\textit{Role} \hfill
+\href{https://link.com}{Website/GitHub}
+
+\begin{itemize}[leftmargin=12pt,itemsep=2pt,topsep=2pt]
+    \item Experience bullet 1.
+    \item Experience bullet 2.
+    \item Experience bullet 3.
+\end{itemize}
+
+\vspace{4pt}
+
+%========================
+% PROJECTS
+%========================
+
+\sectionheading{PROJECTS}
+
+\textbf{Project Name} \hfill Category\\
+\textit{Technologies Used} \hfill
+\href{https://link.com}{GitHub/Live}
+
+\begin{itemize}[leftmargin=12pt,itemsep=2pt,topsep=2pt]
+    \item Project bullet 1.
+    \item Project bullet 2.
+    \item Project bullet 3.
+\end{itemize}
+
+\vspace{4pt}
+
+%========================
+% SKILLS
+%========================
+
+\sectionheading{SKILLS}
+
+\begin{tabular}{@{}p{3cm}p{13cm}@{}}
+\textbf{Languages} &  \\
+\textbf{Frameworks} &  \\
+\textbf{Databases} &  \\
+\textbf{Core CS} &  \\
+\textbf{Systems} &  \\
+\textbf{Tools} &  \\
+\end{tabular}
+
+\vspace{4pt}
+
+%========================
+% CODING PROFILE
+%========================
+
+\sectionheading{CODING PROFILE}
+
+\textbf{Platform Name} \hfill
+\href{https://platform.com/profile}{Profile Link}
+
+\begin{itemize}[leftmargin=12pt,itemsep=2pt,topsep=2pt]
+    \item Achievement or statistic.
+    \item Additional detail.
+\end{itemize}
+
+\end{document}

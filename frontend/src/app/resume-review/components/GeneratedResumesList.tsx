@@ -58,10 +58,10 @@ export function GeneratedResumesList() {
               {resume.resume_json?.summary || "No summary available"}
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" className="w-full flex items-center gap-2">
+              <Button variant="outline" size="sm" className="w-full flex items-center gap-2" onClick={() => api.downloadResume(resume.id, "pdf", true).catch(e => console.error(e))}>
                 <Eye className="w-4 h-4" /> View
               </Button>
-              <Button variant="secondary" size="sm" className="w-full flex items-center gap-2">
+              <Button variant="secondary" size="sm" className="w-full flex items-center gap-2" onClick={() => api.downloadResume(resume.id, "pdf").catch(e => console.error(e))}>
                 <Download className="w-4 h-4" /> Export
               </Button>
             </div>

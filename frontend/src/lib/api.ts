@@ -377,6 +377,29 @@ class ApiClient {
   async getGeneratedResume(id: number) {
     return this.request<any>(`/api/v1/applications/resumes/${id}`);
   }
+
+  async downloadResume(id: number, format: 'pdf' | 'latex', inline: boolean = false): Promise<void> {
+    const url = `${this.baseUrl}/api/v1/applications/resumes/${id}/${format}${inline ? '?inline=true' : ''}`;
+    const response = await fetch(url, { credentials: 'include' });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => null);
+      throw new Error(errorData?.detail || `Download failed (${response.status})`);
+    }
+    const blob = await response.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    if (inline) {
+      window.open(blobUrl, '_blank');
+    } else {
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = `resume_${id}.${format === 'pdf' ? 'pdf' : 'tex'}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+    // Revoke after a delay to allow the download/tab to start
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+  }
 }
 
 export const api = new ApiClient(API_BASE_URL);
