@@ -19,7 +19,7 @@ def get_embedding(text: str) -> List[float]:
     try:
         client = genai.Client(api_key=settings.GOOGLE_API_KEY)
         response = client.models.embed_content(
-            model='text-embedding-004',
+            model='gemini-embedding-2',
             contents=text,
         )
         if hasattr(response, 'embeddings') and len(response.embeddings) > 0:

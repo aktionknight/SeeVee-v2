@@ -187,10 +187,12 @@ async def google_callback(code: str = None, error: str = None, db: AsyncSession 
             url=f"{settings.FRONTEND_URL}/auth/callback",
             status_code=status.HTTP_302_FOUND,
         )
+        from datetime import datetime, timedelta, timezone
         redirect.set_cookie(
             key=AUTH_COOKIE_NAME,
             value=access_token,
             max_age=AUTH_COOKIE_MAX_AGE,
+            expires=datetime.now(timezone.utc) + timedelta(seconds=AUTH_COOKIE_MAX_AGE),
             httponly=True,
             secure=False,       # Set to True in production with HTTPS
             samesite="lax",

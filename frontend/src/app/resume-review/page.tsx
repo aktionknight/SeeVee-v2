@@ -9,14 +9,14 @@ import { EducationList } from "./components/EducationList";
 import { AchievementsList } from "./components/AchievementsList";
 import { ResumeGenerator } from "./components/ResumeGenerator";
 import { GeneratedResumesList } from "./components/GeneratedResumesList";
-import { TabNavigation } from "./components/TabNavigation";
+import { TabNavigation, TabId } from "./components/TabNavigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 
 export default function ResumeReviewPage() {
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState<TabId>("overview");
   const { user } = useAuth();
   const router = useRouter();
 
@@ -132,8 +132,8 @@ export default function ResumeReviewPage() {
                 isLoading={isLoading}
               />
             )}
-            {activeTab === "generator" && <ResumeGenerator />}
-            {activeTab === "history" && <GeneratedResumesList />}
+            {activeTab === "generate" && <ResumeGenerator />}
+            {activeTab === "resumes" && <GeneratedResumesList />}
           </div>
         </CardContent>
       </Card>

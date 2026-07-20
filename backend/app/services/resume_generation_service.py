@@ -21,6 +21,7 @@ Instructions:
 1. Generate a tailored professional summary.
 2. Select and reorder the candidate's skills, placing the ones most relevant to the JD first.
 3. Incorporate the selected projects and experiences. Do NOT hallucinate metrics, technologies, or responsibilities. Use ONLY the verified data provided.
+4. The total length of resume should not exceed one page when converted to PDF.
 4. Output the final resume as a JSON object with the following schema:
 {{
   "summary": "Tailored professional summary",
@@ -47,6 +48,14 @@ Instructions:
       "degree": "Degree",
       "dates": "Start - End"
     }}
+    "Achievements & Certifications" : 
+    [
+    {{
+    "achievement": "Award Name",
+    "description": "Description of achievement",
+    "date": "Date"
+    }}
+    ]
   ]
 }}
 Output ONLY the JSON object. Do not include markdown formatting like ```json.

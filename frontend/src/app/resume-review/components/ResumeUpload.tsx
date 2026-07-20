@@ -36,7 +36,7 @@ export function ResumeUpload({ onUploadComplete }: ResumeUploadProps) {
       attempts++
       try {
         const status = await api.getDocumentStatus(docId)
-        if (status.status === "complete" || status.status === "completed") {
+        if (status.processing_status === "complete" || status.processing_status === "completed") {
           if (pollRef.current) clearInterval(pollRef.current)
           setState("complete")
           setProgress(100)
@@ -44,10 +44,10 @@ export function ResumeUpload({ onUploadComplete }: ResumeUploadProps) {
             status.summary || `Extracted ${status.sections_count || 0} sections from your resume.`
           )
           onUploadComplete?.(status)
-        } else if (status.status === "error" || status.status === "failed") {
+        } else if (status.processing_status === "error" || status.processing_status === "failed") {
           if (pollRef.current) clearInterval(pollRef.current)
           setState("error")
-          setError(status.error || "Processing failed. Please try again.")
+          setError(status.error_message || status.error || "Processing failed. Please try again.")
         } else {
           // Still processing
           setProgress(Math.min(30 + attempts * 10, 90))
