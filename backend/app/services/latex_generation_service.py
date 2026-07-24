@@ -49,7 +49,7 @@ def json_to_latex(resume_json: dict, candidate_name: str = "Candidate Name", ema
 \newcommand{\sectionheading}[1]{%
     \vspace{6pt}
     {\large\textbf{#1}}
-    \vspace{4pt}
+    \vspace{3pt}
     \hrule
     \vspace{4pt}
 }
@@ -63,7 +63,7 @@ def json_to_latex(resume_json: dict, candidate_name: str = "Candidate Name", ema
     {{\LARGE\textbf{{{escape_latex(candidate_name)}}}}}\\
     \href{{mailto:{email}}}{{{escape_latex(email)}}}
 \end{{center}}
-\vspace{{4pt}}
+\vspace{{2pt}}
 """)
 
     # SUMMARY
@@ -96,11 +96,11 @@ def json_to_latex(resume_json: dict, candidate_name: str = "Candidate Name", ema
             latex_code.append(rf"\textbf{{{comp}}} \hfill {dates}\\" + "\n")
             latex_code.append(rf"\textit{{{role}}}" + "\n")
             if bullets:
-                latex_code.append(r"\begin{itemize}[leftmargin=12pt,itemsep=2pt,topsep=2pt]" + "\n")
+                latex_code.append(r"\begin{itemize}[leftmargin=12pt,itemsep=1.5pt,topsep=2pt,parsep=0pt]" + "\n")
                 for bullet in bullets:
                     latex_code.append(rf"    \item {escape_latex(bullet)}" + "\n")
                 latex_code.append(r"\end{itemize}" + "\n")
-            latex_code.append(r"\vspace{4pt}" + "\n")
+            latex_code.append(r"\vspace{3pt}" + "\n")
 
     # PROJECTS
     projects = resume_json.get("projects", [])
@@ -108,39 +108,64 @@ def json_to_latex(resume_json: dict, candidate_name: str = "Candidate Name", ema
         latex_code.append(r"\sectionheading{PROJECTS}" + "\n")
         for proj in projects:
             title = escape_latex(proj.get("title", ""))
-            techs = ", ".join(escape_latex(t) for t in proj.get("technologies", []))
+            raw_techs = proj.get("technologies", [])
+            if isinstance(raw_techs, list):
+                techs = ", ".join(escape_latex(t) for t in raw_techs)
+            else:
+                techs = escape_latex(str(raw_techs))
             bullets = proj.get("bullets", [])
             
-            latex_code.append(rf"\textbf{{{title}}} \hfill \textit{{{techs}}}\\" + "\n")
+            latex_code.append(rf"\textbf{{{title}}}" + (rf" \hfill \textit{{{techs}}}" if techs else "") + r"\\" + "\n")
             if bullets:
-                latex_code.append(r"\begin{itemize}[leftmargin=12pt,itemsep=2pt,topsep=2pt]" + "\n")
+                latex_code.append(r"\begin{itemize}[leftmargin=12pt,itemsep=1.5pt,topsep=2pt,parsep=0pt]" + "\n")
                 for bullet in bullets:
                     latex_code.append(rf"    \item {escape_latex(bullet)}" + "\n")
                 latex_code.append(r"\end{itemize}" + "\n")
-            latex_code.append(r"\vspace{4pt}" + "\n")
+            latex_code.append(r"\vspace{3pt}" + "\n")
 
-    # SKILLS
-    skills = resume_json.get("skills", [])
+    # SKILLS (Categorized Segregation)
+    skills = resume_json.get("skills", {})
     if skills:
-        latex_code.append(r"\sectionheading{SKILLS}" + "\n")
-        latex_code.append(r"\begin{tabular}{@{}p{3cm}p{13cm}@{}}" + "\n")
-        skills_str = ", ".join(escape_latex(s) for s in skills)
-        latex_code.append(rf"\textbf{{Technologies}} & {skills_str} \\" + "\n")
+        latex_code.append(r"\sectionheading{TECHNICAL SKILLS}" + "\n")
+        latex_code.append(r"\begin{tabular}{@{}p{4.2cm}p{14.0cm}@{}}" + "\n")
+        
+        if isinstance(skills, dict):
+            for category, items in skills.items():
+                cat_name = escape_latex(category)
+                if isinstance(items, list):
+                    items_str = ", ".join(escape_latex(s) for s in items)
+                else:
+                    items_str = escape_latex(str(items))
+                latex_code.append(rf"\textbf{{{cat_name}:}} & {items_str} \\" + "\n")
+        elif isinstance(skills, list):
+            # Check if list of dict objects or list of strings
+            if len(skills) > 0 and isinstance(skills[0], dict):
+                for item in skills:
+                    cat_name = escape_latex(item.get("category", "Skills"))
+                    raw_items = item.get("items", item.get("skills", []))
+                    items_str = ", ".join(escape_latex(s) for s in raw_items) if isinstance(raw_items, list) else escape_latex(str(raw_items))
+                    latex_code.append(rf"\textbf{{{cat_name}:}} & {items_str} \\" + "\n")
+            else:
+                skills_str = ", ".join(escape_latex(s) for s in skills)
+                latex_code.append(rf"\textbf{{Core Skills:}} & {skills_str} \\" + "\n")
+        
         latex_code.append(r"\end{tabular}" + "\n\n")
 
     # ACHIEVEMENTS
     achievements = resume_json.get("achievements", []) or resume_json.get("Achievements & Certifications", [])
     if achievements:
-        latex_code.append(r"\sectionheading{ACHIEVEMENTS}" + "\n")
+        latex_code.append(r"\sectionheading{ACHIEVEMENTS \& CERTIFICATIONS}" + "\n")
         for ach in achievements:
-            title = escape_latex(ach.get("achievement", ach.get("title", "")))
-            desc = escape_latex(ach.get("description", ""))
-            date = escape_latex(ach.get("date", ""))
-            
-            latex_code.append(rf"\textbf{{{title}}} \hfill {date}\\" + "\n")
-            if desc:
-                latex_code.append(f"{desc}\\\\\n")
-            latex_code.append(r"\vspace{4pt}" + "\n")
+            if isinstance(ach, dict):
+                title = escape_latex(ach.get("achievement", ach.get("title", "")))
+                desc = escape_latex(ach.get("description", ""))
+                date = escape_latex(ach.get("date", ""))
+                latex_code.append(rf"\textbf{{{title}}}" + (rf" \hfill {date}" if date else "") + r"\\" + "\n")
+                if desc:
+                    latex_code.append(f"{desc}\\\\\n")
+            else:
+                latex_code.append(rf"{escape_latex(str(ach))}\\\\\n")
+            latex_code.append(r"\vspace{3pt}" + "\n")
 
     latex_code.append(r"\end{document}")
     return "".join(latex_code)

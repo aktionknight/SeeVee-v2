@@ -36,7 +36,7 @@ const emptyProject = {
   title: "",
   description: "",
   technologies: "",
-  bullet_points: "",
+  bullets: "",
   url: "",
   source: "user_added",
 }
@@ -60,7 +60,7 @@ export function ProjectsList({ projects, onRefresh, isLoading }: ProjectsListPro
       title: project.title || "",
       description: project.description || "",
       technologies: Array.isArray(project.technologies) ? project.technologies.join(", ") : (project.technologies || ""),
-      bullet_points: Array.isArray(project.bullet_points) ? project.bullet_points.join("\n") : (project.bullet_points || ""),
+      bullets: Array.isArray(project.bullets) ? project.bullets.join("\n") : (project.bullets || ""),
       url: project.url || "",
       source: project.source || "user_added",
     })
@@ -73,7 +73,7 @@ export function ProjectsList({ projects, onRefresh, isLoading }: ProjectsListPro
       const payload = {
         ...formData,
         technologies: formData.technologies.split(",").map((t: string) => t.trim()).filter(Boolean),
-        bullet_points: formData.bullet_points.split("\n").map((b: string) => b.trim()).filter(Boolean),
+        bullets: formData.bullets.split("\n").map((b: string) => b.trim()).filter(Boolean),
       }
       if (editingProject) {
         await api.updateProject(editingProject.id, payload)
@@ -200,9 +200,9 @@ export function ProjectsList({ projects, onRefresh, isLoading }: ProjectsListPro
                   </div>
                 )}
                 {/* Bullet Points */}
-                {Array.isArray(project.bullet_points) && project.bullet_points.length > 0 && (
+                {Array.isArray(project.bullets) && project.bullets.length > 0 && (
                   <ul className="space-y-1">
-                    {project.bullet_points.slice(0, 3).map((bp: string, i: number) => (
+                    {project.bullets.slice(0, 3).map((bp: string, i: number) => (
                       <li key={i} className="text-xs text-muted-foreground flex gap-1.5">
                         <span className="text-blue-400 mt-0.5 shrink-0">•</span>
                         <span className="line-clamp-1">{bp}</span>
@@ -266,8 +266,8 @@ export function ProjectsList({ projects, onRefresh, isLoading }: ProjectsListPro
               <Label htmlFor="proj-bullets">Bullet Points (one per line)</Label>
               <Textarea
                 id="proj-bullets"
-                value={formData.bullet_points}
-                onChange={(e) => setFormData((d) => ({ ...d, bullet_points: e.target.value }))}
+                value={formData.bullets}
+                onChange={(e) => setFormData((d) => ({ ...d, bullets: e.target.value }))}
                 placeholder="Built a scalable API serving 10k req/s&#10;Reduced load time by 40%"
                 className="min-h-[100px]"
               />

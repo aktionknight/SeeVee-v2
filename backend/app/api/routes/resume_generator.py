@@ -28,6 +28,7 @@ class GenerateRequest(BaseModel):
     job_description_id: int
     pinned_project_ids: Optional[List[int]] = []
     excluded_project_ids: Optional[List[int]] = []
+    extra_notes: Optional[str] = None
 
 @router.post("/generate", response_model=GeneratedResumeResponse)
 async def generate_resume(req: GenerateRequest, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
@@ -90,7 +91,8 @@ async def generate_resume(req: GenerateRequest, db: AsyncSession = Depends(get_d
             jd.analysis_json,
             final_projects,
             all_experiences,
-            all_achievements
+            all_achievements,
+            req.extra_notes
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Generation failed: {str(e)}")
@@ -127,9 +129,18 @@ async def get_generated_resume(resume_id: int, db: AsyncSession = Depends(get_db
     return resume
 
 from fastapi.responses import Response, FileResponse
+import re
 from app.services.latex_generation_service import json_to_latex, compile_latex_to_pdf
 
 UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "uploads", "resumes")
+
+def get_safe_filename(title: str, default: str) -> str:
+    if not title:
+        return default
+    safe_title = re.sub(r'[^a-zA-Z0-9]', '_', title)
+    safe_title = re.sub(r'_+', '_', safe_title).strip('_')
+    return safe_title if safe_title else default
+
 @router.get("/resumes/{resume_id}/latex")
 async def get_resume_latex(resume_id: int, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     result = await db.execute(select(GeneratedResume).filter(GeneratedResume.id == resume_id, GeneratedResume.user_id == current_user.id))
@@ -137,8 +148,12 @@ async def get_resume_latex(resume_id: int, db: AsyncSession = Depends(get_db), c
     if not resume:
         raise HTTPException(status_code=404, detail="Generated resume not found")
     
+    res_jd = await db.execute(select(JobDescription).filter(JobDescription.id == resume.job_description_id))
+    jd = res_jd.scalars().first()
+    safe_name = get_safe_filename(jd.role_title if jd else None, f"resume_{resume_id}")
+    
     latex_str = json_to_latex(resume.resume_json, candidate_name=current_user.name, email=current_user.email)
-    return Response(content=latex_str, media_type="text/x-tex", headers={"Content-Disposition": f"attachment; filename=resume_{resume_id}.tex"})
+    return Response(content=latex_str, media_type="text/x-tex", headers={"Content-Disposition": f"attachment; filename={safe_name}.tex"})
 
 @router.get("/resumes/{resume_id}/pdf")
 async def get_resume_pdf(resume_id: int, inline: bool = False, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
@@ -146,6 +161,10 @@ async def get_resume_pdf(resume_id: int, inline: bool = False, db: AsyncSession 
     resume = result.scalars().first()
     if not resume:
         raise HTTPException(status_code=404, detail="Generated resume not found")
+        
+    res_jd = await db.execute(select(JobDescription).filter(JobDescription.id == resume.job_description_id))
+    jd = res_jd.scalars().first()
+    safe_name = get_safe_filename(jd.role_title if jd else None, f"resume_{resume_id}")
     
     user_dir = os.path.join(UPLOAD_DIR, str(current_user.id))
     os.makedirs(user_dir, exist_ok=True)
@@ -162,4 +181,4 @@ async def get_resume_pdf(resume_id: int, inline: bool = False, db: AsyncSession 
     if inline:
         return FileResponse(path=pdf_path, media_type="application/pdf")
     else:
-        return FileResponse(path=pdf_path, media_type="application/pdf", filename=f"resume_{resume_id}.pdf")
+        return FileResponse(path=pdf_path, media_type="application/pdf", filename=f"{safe_name}.pdf")

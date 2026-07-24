@@ -9,7 +9,7 @@ import httpx
 
 from app.core.config import settings
 from app.core.database import get_db
-from app.core.security import create_access_token, get_current_user, AUTH_COOKIE_NAME, AUTH_COOKIE_MAX_AGE
+from app.core.security import create_access_token, get_current_user, AUTH_COOKIE_NAME, AUTH_COOKIE_MAX_AGE, get_cookie_params
 from app.models.user import User
 from app.schemas.user import UserResponse
 
@@ -188,15 +188,12 @@ async def google_callback(code: str = None, error: str = None, db: AsyncSession 
             status_code=status.HTTP_302_FOUND,
         )
         from datetime import datetime, timedelta, timezone
+        cookie_params = get_cookie_params()
         redirect.set_cookie(
-            key=AUTH_COOKIE_NAME,
+            **cookie_params,
             value=access_token,
             max_age=AUTH_COOKIE_MAX_AGE,
             expires=datetime.now(timezone.utc) + timedelta(seconds=AUTH_COOKIE_MAX_AGE),
-            httponly=True,
-            secure=False,       # Set to True in production with HTTPS
-            samesite="lax",
-            path="/",
         )
         return redirect
 
@@ -226,12 +223,9 @@ async def get_me(current_user: User = Depends(get_current_user)):
 async def logout():
     """Clear the auth cookie to log the user out."""
     response = JSONResponse(content={"ok": True})
-    response.delete_cookie(
-        key=AUTH_COOKIE_NAME,
-        path="/",
-        httponly=True,
-        samesite="lax",
-    )
+    cookie_params = get_cookie_params()
+    # delete_cookie needs key, path, domain, samesite, httponly, secure
+    response.delete_cookie(**cookie_params)
     return response
 
 

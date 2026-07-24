@@ -10,6 +10,7 @@ import { Sparkles, FileText, Briefcase, CheckCircle2 } from "lucide-react";
 
 export function ResumeGenerator() {
   const [jobDescription, setJobDescription] = useState("");
+  const [extraNotes, setExtraNotes] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [resumeData, setResumeData] = useState<any>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -30,7 +31,8 @@ export function ResumeGenerator() {
       
       // 2. Generate Resume
       const generated = await api.generateTailoredResume({ 
-        job_description_id: jdAnalysis.id 
+        job_description_id: jdAnalysis.id,
+        extra_notes: extraNotes
       });
       
       setResumeData(generated);
@@ -57,9 +59,21 @@ export function ResumeGenerator() {
               <Textarea 
                 id="jd" 
                 placeholder="Paste Job Description here..." 
-                className="min-h-[300px]"
+                className="min-h-[220px]"
                 value={jobDescription}
                 onChange={(e) => setJobDescription(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2 mt-4">
+              <Label htmlFor="notes" className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-blue-500" /> Extra Instructions
+              </Label>
+              <Textarea 
+                id="notes" 
+                placeholder="E.g., Emphasize my experience with Python and AWS..." 
+                className="min-h-[80px]"
+                value={extraNotes}
+                onChange={(e) => setExtraNotes(e.target.value)}
               />
             </div>
             {errorMsg && <p className="text-sm text-destructive">{errorMsg}</p>}
@@ -99,14 +113,27 @@ export function ResumeGenerator() {
                   <h3 className="font-semibold text-lg mb-2">Professional Summary</h3>
                   <p className="text-sm text-muted-foreground">{resumeData.resume_json?.summary}</p>
                   
-                  <h3 className="font-semibold text-lg mt-4 mb-2">Skills</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {resumeData.resume_json?.skills?.map((skill: string, i: number) => (
-                      <span key={i} className="px-2 py-1 bg-primary/10 text-primary rounded-md text-xs">
-                        {skill}
-                      </span>
-                    ))}
-                  </div>
+                  <h3 className="font-semibold text-lg mt-4 mb-2">Technical Skills</h3>
+                  {typeof resumeData.resume_json?.skills === "object" && !Array.isArray(resumeData.resume_json?.skills) ? (
+                    <div className="space-y-2">
+                      {Object.entries(resumeData.resume_json.skills).map(([category, items]: [string, any], i: number) => (
+                        <div key={i} className="text-xs">
+                          <span className="font-semibold text-foreground/90 mr-2">{category}:</span>
+                          <span className="text-muted-foreground">
+                            {Array.isArray(items) ? items.join(", ") : String(items)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap gap-1.5">
+                      {resumeData.resume_json?.skills?.map((skill: string, i: number) => (
+                        <span key={i} className="px-2 py-1 bg-primary/10 text-primary rounded-md text-xs font-medium">
+                          {skill}
+                        </span>
+                      ))}
+                    </div>
+                  )}
 
                   <h3 className="font-semibold text-lg mt-4 mb-2">Projects</h3>
                   <div className="space-y-3">

@@ -31,6 +31,28 @@ def get_embedding(text: str) -> List[float]:
         print(f"Error generating embedding: {e}")
         return []
 
+
+def get_embeddings_batch(texts: List[str]) -> List[List[float]]:
+    """Generate embeddings for multiple texts in a single API call.
+    
+    Falls back to sequential calls if the batch call fails.
+    """
+    if not texts:
+        return []
+    try:
+        client = genai.Client(api_key=settings.GOOGLE_API_KEY)
+        response = client.models.embed_content(
+            model='gemini-embedding-2',
+            contents=texts,
+        )
+        if hasattr(response, 'embeddings') and response.embeddings:
+            return [emb.values for emb in response.embeddings]
+        return [[] for _ in texts]
+    except Exception as e:
+        print(f"Batch embedding failed, falling back to sequential: {e}")
+        # Fallback: sequential calls
+        return [get_embedding(t) for t in texts]
+
 def index_career_evidence(user_id: int, profile_data: dict, db_session) -> dict:
     """
     Creates evidence chunks from profile entities and stores them in ChromaDB with user_id metadata.
@@ -94,7 +116,7 @@ def index_career_evidence(user_id: int, profile_data: dict, db_session) -> dict:
     if not documents:
         return {"status": "no data to ingest"}
 
-    embeddings = [get_embedding(doc) for doc in documents]
+    embeddings = get_embeddings_batch(documents)
     
     valid_docs, valid_meta, valid_ids, valid_embs = [], [], [], []
     for i, emb in enumerate(embeddings):
@@ -144,47 +166,67 @@ def retrieve_career_evidence(user_id: int, query: str, top_k: int = 10) -> list:
 def rank_projects(jd_analysis: dict, projects: list, evidence_results: list) -> list:
     """
     Hybrid ranking:
-    45% semantic relevance (from evidence_results)
-    30% required skill overlap
+    40% semantic relevance (from ChromaDB)
+    30% required skill & keyword overlap (in title, tech stack, description, bullets)
     15% preferred skill overlap
-    10% evidence quality (has bullets, tech stack)
+    15% role title & evidence quality match
     """
     ranked_projects = []
     
-    req_skills = set([s.lower() for s in jd_analysis.get('required_skills', [])])
-    pref_skills = set([s.lower() for s in jd_analysis.get('preferred_skills', [])])
+    req_skills = set([s.lower() for s in jd_analysis.get('required_skills', []) if s])
+    pref_skills = set([s.lower() for s in jd_analysis.get('preferred_skills', []) if s])
+    jd_keywords = set([k.lower() for k in jd_analysis.get('keywords', []) if k])
+    role_title = (jd_analysis.get('role_title') or '').lower()
     
-    # Map project IDs to their best semantic distance from Qdrant/Chroma
+    # Map project IDs to their best semantic distance
     semantic_scores = {}
     for ev in evidence_results:
-        if ev['metadata'].get('entity_type') == 'project':
+        if ev.get('metadata', {}).get('entity_type') == 'project':
             pid = ev['metadata'].get('entity_id')
-            # convert distance to a score (lower distance = better score)
-            # assuming cosine distance roughly 0 to 2
-            score = max(0, 1 - (ev['distance'] / 2.0))
+            score = max(0.0, 1.0 - (ev.get('distance', 1.0) / 2.0))
             if pid not in semantic_scores or score > semantic_scores[pid]:
                 semantic_scores[pid] = score
                 
     for proj in projects:
-        techs = set([t.lower() for t in proj.get('technologies', [])])
+        title = (proj.get('title') or '').lower()
+        desc = (proj.get('description') or '').lower()
+        techs_list = [t.lower() for t in (proj.get('technologies') or []) if t]
+        bullets_text = " ".join([(b or '').lower() for b in (proj.get('bullets') or [])])
         
-        # 45% semantic relevance
+        full_proj_text = f"{title} {desc} {' '.join(techs_list)} {bullets_text}"
+        
+        # 40% semantic relevance
         sem_score = semantic_scores.get(proj.get('id'), 0.0)
         
-        # 30% required skill overlap
-        req_overlap = len(req_skills.intersection(techs))
-        req_score = (req_overlap / len(req_skills)) if req_skills else 1.0
-        
+        # 30% required skills & keyword match
+        all_req_targets = req_skills.union(jd_keywords)
+        if all_req_targets:
+            matched_req = sum(1 for item in all_req_targets if item in full_proj_text)
+            req_score = min(1.0, matched_req / max(1, len(all_req_targets)))
+        else:
+            req_score = 0.5
+            
         # 15% preferred skill overlap
-        pref_overlap = len(pref_skills.intersection(techs))
-        pref_score = (pref_overlap / len(pref_skills)) if pref_skills else 1.0
-        
-        # 10% evidence quality
-        ev_score = 0.0
-        if proj.get('bullets'): ev_score += 0.5
-        if proj.get('technologies'): ev_score += 0.5
-        
-        final_score = (0.45 * sem_score) + (0.30 * req_score) + (0.15 * pref_score) + (0.10 * ev_score)
+        if pref_skills:
+            matched_pref = sum(1 for item in pref_skills if item in full_proj_text)
+            pref_score = min(1.0, matched_pref / len(pref_skills))
+        else:
+            pref_score = 0.5
+            
+        # 15% role title & quality score
+        role_score = 0.0
+        if role_title:
+            # Check for domain keywords in project text (e.g. dev/web/frontend/backend vs ai/ml)
+            role_words = [w for w in role_title.split() if len(w) > 2]
+            matched_role_words = sum(1 for w in role_words if w in full_proj_text)
+            role_score += min(0.7, (matched_role_words / max(1, len(role_words))))
+            
+        if proj.get('bullets'):
+            role_score += 0.15
+        if proj.get('technologies'):
+            role_score += 0.15
+            
+        final_score = (0.40 * sem_score) + (0.30 * req_score) + (0.15 * pref_score) + (0.15 * min(1.0, role_score))
         
         proj_copy = proj.copy()
         proj_copy['match_score'] = final_score
@@ -192,3 +234,4 @@ def rank_projects(jd_analysis: dict, projects: list, evidence_results: list) -> 
         
     ranked_projects.sort(key=lambda x: x['match_score'], reverse=True)
     return ranked_projects
+

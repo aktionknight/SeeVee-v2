@@ -6,32 +6,41 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 PROMPT_TEMPLATE = """
-You are an expert resume writer. Generate a tailored resume based on the candidate's career profile and the target job description.
+You are an expert resume writer specializing in High ATS Optimization. Generate a perfectly tailored, 1-page resume based on the candidate's verified profile data and the target job description.
 
 Target Job Description Analysis:
 {jd_analysis}
 
-Career Profile (Verified Data):
+Candidate Profile (Verified Data):
 Summary: {summary}
 Selected Projects: {projects}
 Selected Experiences: {experiences}
 Selected Achievements: {achievements}
 
-Instructions:
-1. Generate a tailored professional summary.
-2. Select and reorder the candidate's skills, placing the ones most relevant to the JD first.
-3. Incorporate the selected projects and experiences. Do NOT hallucinate metrics, technologies, or responsibilities. Use ONLY the verified data provided.
-4. The total length of resume should not exceed one page when converted to PDF.
-4. Output the final resume as a JSON object with the following schema:
+{extra_notes_section}
+
+CRITICAL ATS & TAILORING INSTRUCTIONS:
+1. TAILORED SUMMARY: Write a concise 2-3 sentence Professional Summary strictly aligned with the target role title (e.g., if the job is for Software Development/Frontend/Backend Engineer, focus on web applications, software engineering principles, system design, and API development rather than irrelevant AI framing, unless AI is requested in the JD).
+2. CATEGORIZED SKILLS: Categorize the candidate's technical skills into clear, segregated groups (e.g., "Languages", "Frameworks & Libraries", "Tools & Platforms", "Databases & Core CS"). Do NOT return a single continuous un-categorized array.
+3. TAILORED EXPERIENCE & PROJECTS: Select and re-frame bullet points using strong action verbs (Architected, Developed, Engineered, Optimized, Implemented) and exact ATS keywords from the JD. Highlight responsibilities and technical accomplishments that directly match the target role.
+4. VERIFIED FACTS ONLY: Do NOT hallucinate metrics, titles, or technologies not grounded in the verified data.
+5. 1-PAGE LIMIT: Keep descriptions concise and high-impact so the compiled resume fits neatly on a single page.
+
+Output the final resume as a JSON object with this exact schema:
 {{
-  "summary": "Tailored professional summary",
-  "skills": ["Skill 1", "Skill 2"],
+  "summary": "Tailored 2-3 sentence summary specifically aligned to target role title and JD.",
+  "skills": {{
+    "Languages": ["JavaScript", "TypeScript", "Python", "SQL"],
+    "Frameworks & Libraries": ["React", "Node.js", "Express", "TailwindCSS"],
+    "Tools & Platforms": ["Git", "Docker", "AWS", "PostgreSQL"],
+    "Core CS & Methodology": ["REST APIs", "Agile", "System Architecture"]
+  }},
   "projects": [
     {{
       "title": "Project Title",
-      "description": "Brief description",
-      "technologies": ["Tech 1"],
-      "bullets": ["Impact bullet 1"]
+      "description": "Brief description emphasizing relevant aspects for the target role",
+      "technologies": ["Tech 1", "Tech 2"],
+      "bullets": ["Action-oriented bullet matching JD keywords"]
     }}
   ],
   "experience": [
@@ -39,35 +48,37 @@ Instructions:
       "title": "Job Title",
       "company": "Company Name",
       "dates": "Start - End",
-      "bullets": ["Action oriented bullet"]
+      "bullets": ["High-impact bullet with action verb and key technology"]
     }}
   ],
   "education": [
     {{
       "institution": "University Name",
-      "degree": "Degree",
+      "degree": "Degree Name",
       "dates": "Start - End"
     }}
-    "Achievements & Certifications" : 
-    [
+  ],
+  "achievements": [
     {{
-    "achievement": "Award Name",
-    "description": "Description of achievement",
-    "date": "Date"
+      "title": "Award or Certification",
+      "description": "Short description",
+      "date": "Date"
     }}
-    ]
   ]
 }}
 Output ONLY the JSON object. Do not include markdown formatting like ```json.
 """
 
-def generate_tailored_resume(career_profile: dict, jd_analysis: dict, selected_projects: list, selected_experiences: list, selected_achievements: list) -> dict:
+def generate_tailored_resume(career_profile: dict, jd_analysis: dict, selected_projects: list, selected_experiences: list, selected_achievements: list, extra_notes: str = None) -> dict:
+    extra_notes_section = f"User's Extra Custom Instructions:\n{extra_notes}\n" if extra_notes and extra_notes.strip() else ""
+    
     prompt = PROMPT_TEMPLATE.format(
         jd_analysis=json.dumps(jd_analysis, indent=2, default=str),
         summary=career_profile.get('summary', ''),
         projects=json.dumps(selected_projects, indent=2, default=str),
         experiences=json.dumps(selected_experiences, indent=2, default=str),
-        achievements=json.dumps(selected_achievements, indent=2, default=str)
+        achievements=json.dumps(selected_achievements, indent=2, default=str),
+        extra_notes_section=extra_notes_section
     )
     
     try:

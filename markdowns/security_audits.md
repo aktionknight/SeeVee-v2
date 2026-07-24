@@ -557,3 +557,28 @@ def get_safe_storage_path(extension: str = ".pdf") -> Path:
     assert filepath.is_relative_to(UPLOAD_DIR.resolve())
     return filepath
 ```
+
+---
+
+## Session Cookie Configuration Hardcoded for Development
+
+**Date Logged**: 2026-07-24
+**Severity**: Medium
+**Location**: `backend/app/core/config.py`, `backend/app/core/security.py`, `backend/app/api/routes/auth.py`
+
+### Description
+Session cookie attributes (`secure`, `samesite`, `domain`) were previously hardcoded with development-only values (`secure=False`, `samesite="lax"`, no domain). This caused two issues:
+1. **Production HTTPS breakage**: Cookies would not be sent over HTTPS without `Secure=True`, forcing users to re-authenticate on every page load.
+2. **Cross-domain deployment failure**: If the frontend and backend were hosted on different subdomains in production, cookies would not be shared without a proper `domain` attribute.
+
+### Vulnerability Vectors
+- **Session fixation on HTTP**: Without `Secure=True` in production, cookies could be intercepted on non-HTTPS connections.
+- **Cookie scope too narrow**: Without an explicit domain, cookies could fail to reach the backend on multi-subdomain deployments.
+
+### Mitigation Applied
+- Centralized all cookie parameters into `get_cookie_params()` in `security.py`, reading from environment-configurable settings (`COOKIE_DOMAIN`, `COOKIE_SECURE`, `COOKIE_SAMESITE`).
+- Default values remain safe for local development (`secure=False`, `samesite=lax`, no domain).
+- Production `.env` should set `COOKIE_SECURE=true` and `COOKIE_DOMAIN=.yourdomain.com`.
+- Token lifetime increased from 24 hours to 7 days to reduce unnecessary re-authentication.
+
+### Status: **Mitigated**

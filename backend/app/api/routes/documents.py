@@ -42,13 +42,12 @@ async def process_document_background(document_id: int, file_path: str):
             with open(file_path, "rb") as f:
                 content = f.read()
                 
-            # 1. Extract text
+            # 1. Extract text (CPU-bound, no DB commit yet)
             extracted_text = extract_text_with_ocr_fallback(content)
             doc.extracted_text = extracted_text
             doc.text_extraction_status = "complete"
-            await db.commit()
             
-            # 2. Extract structured profile
+            # 2. Extract structured profile via LLM (network-bound, no DB commit yet)
             profile_data = extract_career_profile(extracted_text)
             
             # 3. Create or update CareerProfile
@@ -62,10 +61,10 @@ async def process_document_background(document_id: int, file_path: str):
                 if profile_data.get(field):
                     setattr(profile, field, profile_data[field])
             
-            await db.commit()
-            await db.refresh(profile)
+            # Flush to get profile.id for foreign keys, but don't commit yet
+            await db.flush()
             
-            # 4. Insert nested entities
+            # 4. Insert all nested entities (still no commit — single atomic batch)
             for s in profile_data.get('skills', []):
                 db.add(Skill(user_id=doc.user_id, profile_id=profile.id, name=s.get('name'), category=s.get('category'), proficiency_level=s.get('proficiency_level'), source_document_id=doc.id))
                 
@@ -81,9 +80,10 @@ async def process_document_background(document_id: int, file_path: str):
             for a in profile_data.get('achievements', []):
                 db.add(Achievement(user_id=doc.user_id, profile_id=profile.id, title=a.get('title'), description=a.get('description'), date=a.get('date'), issuer=a.get('issuer'), achievement_type=a.get('achievement_type'), source_document_id=doc.id))
 
-            await db.commit()
+            # Flush entities to get their IDs for Chroma indexing
+            await db.flush()
 
-            # 5. Index into Chroma
+            # 5. Index into Chroma (uses flushed IDs, still no commit)
             try:
                 all_skills = (await db.execute(select(Skill).filter(Skill.user_id == doc.user_id))).scalars().all()
                 all_projects = (await db.execute(select(Project).filter(Project.user_id == doc.user_id))).scalars().all()
@@ -98,10 +98,12 @@ async def process_document_background(document_id: int, file_path: str):
                 }
                 index_career_evidence(doc.user_id, db_profile_data, db)
             except Exception as e:
-                logger.error(f"RAG indexing failed: {e}")
+                logger.error(f"RAG indexing failed (non-fatal): {e}")
                 
+            # 6. Single atomic commit — everything becomes visible at once
             doc.processing_status = "complete"
             await db.commit()
+            logger.info(f"Document {document_id} processing complete")
             
         except Exception as e:
             logger.error(f"Document processing failed: {e}")

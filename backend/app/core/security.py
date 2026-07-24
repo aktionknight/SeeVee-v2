@@ -14,6 +14,24 @@ AUTH_COOKIE_NAME = "seevee_session"
 AUTH_COOKIE_MAX_AGE = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60  # seconds
 
 
+def get_cookie_params() -> dict:
+    """Return a dict of cookie params derived from settings.
+
+    Used by both set_cookie() and delete_cookie() in auth routes
+    so that the values are always consistent and environment-aware.
+    """
+    params: dict = {
+        "key": AUTH_COOKIE_NAME,
+        "httponly": True,
+        "samesite": settings.COOKIE_SAMESITE,
+        "secure": settings.COOKIE_SECURE,
+        "path": "/",
+    }
+    if settings.COOKIE_DOMAIN:
+        params["domain"] = settings.COOKIE_DOMAIN
+    return params
+
+
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
     # JWT spec requires 'sub' to be a string

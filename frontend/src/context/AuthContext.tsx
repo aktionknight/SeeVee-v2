@@ -33,7 +33,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
 
-  // Check for existing session on mount (cookie-based — no localStorage token)
+  // Check for existing session ONCE on mount (cookie-based — no localStorage token)
   useEffect(() => {
     // Skip auto-check on the callback page — it handles its own auth flow
     if (pathname === '/auth/callback') {
@@ -41,15 +41,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    api.getMe()
-      .then((userData) => {
-        setUser(userData);
-      })
-      .catch(() => {
-        setUser(null);
-      })
-      .finally(() => setIsLoading(false));
-  }, [pathname]);
+    let cancelled = false;
+
+    const checkSession = async (retriesLeft: number = 1) => {
+      try {
+        const userData = await api.getMe();
+        if (!cancelled) setUser(userData);
+      } catch {
+        // Retry once after a short delay — backend might be busy processing
+        if (retriesLeft > 0) {
+          await new Promise((r) => setTimeout(r, 1500));
+          if (!cancelled) return checkSession(retriesLeft - 1);
+        }
+        if (!cancelled) setUser(null);
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    };
+
+    checkSession();
+
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Mount-only — don't re-check on every navigation
 
   // Redirect logic — protect private routes
   useEffect(() => {
