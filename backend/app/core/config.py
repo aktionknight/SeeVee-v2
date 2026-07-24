@@ -24,9 +24,10 @@ class Settings(BaseSettings):
     GOOGLE_API_KEY: str
 
     # Encryption (Fernet key for encrypting stored API keys)
-    ENCRYPTION_KEY: str
+    ENCRYPTION_KEY: str = "change_me_to_a_32_byte_base64_key="
 
     class Config:
-        env_file = "../.env"
+        env_file = ".env"
+        extra = "ignore"
 
 settings = Settings()

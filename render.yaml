@@ -1,0 +1,61 @@
+services:
+  # ---------------------------------------------------------------------------
+  # 1. FastAPI Backend Service (Docker with Tectonic LaTeX support)
+  # ---------------------------------------------------------------------------
+  - type: web
+    name: seevee-backend
+    env: docker
+    dockerContext: ./backend
+    dockerfilePath: ./backend/Dockerfile
+    region: oregon
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: PROJECT_NAME
+        value: SeeVee AI Tailor
+      - key: DATABASE_URL
+        fromDatabase:
+          name: seevee-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: GOOGLE_API_KEY
+        sync: false # User must set in Render Dashboard
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REDIRECT_URI
+        value: https://seevee-backend.onrender.com/api/v1/auth/google/callback
+      - key: FRONTEND_URL
+        value: https://seevee-frontend.onrender.com
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: COOKIE_SAMESITE
+        value: "none"
+      - key: ENCRYPTION_KEY
+        generateValue: true
+
+  # ---------------------------------------------------------------------------
+  # 2. Next.js Frontend Service
+  # ---------------------------------------------------------------------------
+  - type: web
+    name: seevee-frontend
+    env: node
+    region: oregon
+    plan: free
+    buildCommand: cd frontend && npm install && npm run build
+    startCommand: cd frontend && npm start
+    envVars:
+      - key: NEXT_PUBLIC_API_URL
+        value: https://seevee-backend.onrender.com
+
+databases:
+  # ---------------------------------------------------------------------------
+  # 3. Managed PostgreSQL Database
+  # ---------------------------------------------------------------------------
+  - name: seevee-db
+    region: oregon
+    plan: free
+    databaseName: seeveedb
+    user: seeveeuser

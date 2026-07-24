@@ -582,3 +582,25 @@ Session cookie attributes (`secure`, `samesite`, `domain`) were previously hardc
 - Token lifetime increased from 24 hours to 7 days to reduce unnecessary re-authentication.
 
 ### Status: **Mitigated**
+
+---
+
+## Cross-Domain Production Cookie & CORS Security on Render
+
+**Date Logged**: 2026-07-24
+**Severity**: Medium
+**Location**: `backend/app/core/config.py`, `render.yaml`, `backend/app/main.py`
+
+### Description
+When deploying to Render, the frontend web service (`seevee-frontend.onrender.com`) and backend API service (`seevee-backend.onrender.com`) run on distinct origins. Browsers treat cross-origin requests with credentials strictly under the SameSite cookie specification.
+
+### Vulnerability Vectors & Cross-Domain Considerations
+1. **Cookie Blockage (`SameSite=Lax`)**: With default `SameSite=Lax`, browsers block credential cookies on cross-origin API calls (such as POST requests to `/api/v1/applications/generate`).
+2. **CSRF Risk (`SameSite=None`)**: Setting `SameSite=None` allows cookies to be sent across origins over HTTPS (`Secure=True`), but opens potential CSRF vectors if CORS or origin checking is overly permissive.
+
+### Recommended & Implemented Mitigations
+1. **Enforce `COOKIE_SECURE=true` and `COOKIE_SAMESITE=none`** on production Render deployments so HTTPS cookies function seamlessly across domains.
+2. **Strict CORS Whitelisting**: Ensure `CORSMiddleware` in `backend/app/main.py` only permits the explicit `FRONTEND_URL` origin (`https://seevee-frontend.onrender.com`) with `allow_credentials=True`. Wildcard `allow_origins=["*"]` must never be combined with credentials.
+3. **Environment Isolation**: Default dev environment remains `COOKIE_SAMESITE=lax` and `COOKIE_SECURE=false`.
+
+### Status: **Mitigated & Documented**
