@@ -366,7 +366,7 @@ class ApiClient {
   // Resume Generation
   // -----------------------------------------------------------------------
 
-  async generateTailoredResume(data: { job_description_id: number; pinned_project_ids?: number[]; excluded_project_ids?: number[] }) {
+  async generateTailoredResume(data: { job_description_id: number; pinned_project_ids?: number[]; excluded_project_ids?: number[]; extra_notes?: string }) {
     return this.request<any>('/api/v1/applications/generate', { method: 'POST', body: JSON.stringify(data) });
   }
 
